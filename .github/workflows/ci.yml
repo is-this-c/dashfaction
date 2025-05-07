@@ -41,4 +41,4 @@ jobs:
       working-directory: ./build
       run: |
         Launch-VsDevShell -HostArch amd64 -Arch x86 -SkipAutomaticLocation
-        cmake --build . -j $env:NUMBER_OF_PROCESSORS
+        cmake --build . -j 1
