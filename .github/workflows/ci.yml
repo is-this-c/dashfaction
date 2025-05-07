@@ -5,39 +5,10 @@ on:
   pull_request:
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
   SCCACHE_GHA_ENABLED: 'true'
 
 jobs:
-  build-mingw:
-    runs-on: ubuntu-24.04
-
-    steps:
-    - uses: actions/checkout@v4
-    - uses: mozilla-actions/sccache-action@v0.0.9
-
-    - name: Install packages
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install --no-install-recommends g++-mingw-w64-i686-posix ninja-build wine32 wine
-
-    - name: Create build environment
-      run: cmake -E make_directory ./build
-
-    - name: Configure CMake
-      working-directory: ./build
-      run: |
-        cmake .. \
-          -D CMAKE_C_COMPILER_LAUNCHER=sccache \
-          -D CMAKE_CXX_COMPILER_LAUNCHER=sccache \
-          -D CMAKE_BUILD_TYPE=$BUILD_TYPE \
-          -D CMAKE_TOOLCHAIN_FILE=../cmake/mingw-ubuntu.cmake
-
-    - name: Build
-      working-directory: ./build
-      run: cmake --build . -j $(nproc)
-
   build-msvc:
     runs-on: windows-2022
 
