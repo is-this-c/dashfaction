@@ -23,6 +23,7 @@
 #include <patch_common/AsmWriter.h>
 #include <shlwapi.h>
 #include <windows.h>
+#include "../multi/alpine_packets.h"
 
 static rf::Player* g_spectate_mode_target;
 static rf::Camera* g_old_target_camera = nullptr;
@@ -81,14 +82,17 @@ void multi_spectate_set_target_player(rf::Player* player)
     }
 
     bool entering_player_spectate = (player != rf::local_player);
-
+    
     if (entering_player_spectate) {
         g_local_queued_delayed_spawn = false;
         stop_draw_respawn_timer_notification();
     }
 
     g_spectate_mode_enabled = entering_player_spectate;
-    g_spectate_mode_target = player;
+    if (g_spectate_mode_target != player) {
+        af_send_spectate_start_packet(player);
+        g_spectate_mode_target = player;
+    }
 
     rf::multi_kill_local_player();
     set_camera_target(player);

@@ -40,6 +40,10 @@ static bool g_enter_anim = false;
 static bool g_leave_anim = false;
 static bool g_big_scoreboard = false;
 
+bool multi_scoreboard_is_visible() {
+    return g_scoreboard_visible;
+}
+
 void multi_scoreboard_set_big(bool is_big)
 {
     g_big_scoreboard = is_big;

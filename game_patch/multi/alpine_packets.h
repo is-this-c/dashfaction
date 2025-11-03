@@ -30,6 +30,8 @@ enum class af_packet_type : uint8_t
     af_koth_hill_captured = 0x58,       // Alpine 1.2
     af_just_died_info = 0x59,           // Alpine 1.2
     af_server_info = 0x5A,              // Alpine 1.2
+    af_spectate_start = 0x5B,           // Alpine 1.2
+    af_spectate_notify = 0x5C,          // Alpine 1.2
 };
 
 struct af_ping_location_req_packet
@@ -179,6 +181,17 @@ struct af_server_info_packet
     uint16_t semi_auto_cooldown = 0;
 };
 
+struct af_spectate_start_packet {
+    RF_GamePacketHeader header;
+    uint8_t spectatee_id;
+};
+
+struct af_spectate_notify_packet {
+    RF_GamePacketHeader header;
+    uint8_t spectator_id;
+    bool does_spectate;
+};
+
 #pragma pack(pop)
 
 bool af_process_packet(const void* data, int len, const rf::NetAddr& addr, rf::Player* player);
@@ -206,6 +219,10 @@ static void af_process_just_died_info_packet(const void* data, size_t len, const
 void af_send_server_info_packet(rf::Player* player);
 void af_send_server_info_packet_to_all();
 static void af_process_server_info_packet(const void* data, size_t len, const rf::NetAddr&);
+void af_send_spectate_start_packet(const rf::Player* spectatee);
+void af_process_spectate_start_packet(const void* data, size_t len, const rf::NetAddr&);
+void af_send_spectate_notify_packet(rf::Player* player, const rf::Player* spectator, bool does_spectate);
+void af_process_spectate_notify_packet(const void* data, size_t len, const rf::NetAddr&);
 
 // client requests
 void af_send_handicap_request(uint8_t amount);

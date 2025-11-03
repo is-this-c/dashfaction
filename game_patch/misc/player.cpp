@@ -49,7 +49,7 @@ void reset_player_additional_data(const rf::Player* const player)
     g_player_additional_data_map.erase(player);
 }
 
-PlayerAdditionalData& get_player_additional_data(rf::Player* player)
+PlayerAdditionalData& get_player_additional_data(const rf::Player* const player)
 {
     return g_player_additional_data_map[player];
 }

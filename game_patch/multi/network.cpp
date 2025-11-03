@@ -208,6 +208,8 @@ enum packet_type : uint8_t {
     af_koth_hill_captured  = 0x58,
     af_just_died_info      = 0x59,
     af_server_info         = 0x5A,
+    af_spectate_start      = 0x5B,
+    af_spectate_notify     = 0x5C
 };
 
 // client -> server
@@ -233,7 +235,8 @@ std::array g_server_side_packet_whitelist{
     rcon_request,
     rcon,
     af_ping_location_req,
-    af_client_req
+    af_client_req,
+    af_spectate_start
 };
 
 // server -> client
@@ -288,7 +291,8 @@ std::array g_client_side_packet_whitelist{
     af_koth_hill_state,
     af_koth_hill_captured,
     af_just_died_info,
-    af_server_info
+    af_server_info,
+    af_spectate_notify
 };
 // clang-format on
 
@@ -387,6 +391,15 @@ FunHook<MultiIoPacketHandler> process_left_game_packet_hook{
     [](char* data, const rf::NetAddr& addr) {
         // server-side and client-side
         verify_player_id_in_packet(&data[0], addr, "left_game");
+
+        if (!rf::is_server && !rf::is_dedicated_server) {
+            rf::Player* const player = rf::multi_find_player_by_id(data[0]);
+            if (player) {
+                g_local_player_spectators.erase(player);
+                build_local_player_spectators_strings();
+            }
+        }
+
         process_left_game_packet_hook.call_target(data, addr);
     },
 };
@@ -1684,12 +1697,13 @@ FunHook<void()> multi_stop_hook{
     0x0046E2C0,
     []() {
         g_af_server_info.reset(); // Clear server info when leaving
+        g_local_player_spectators.clear();
         set_local_pre_match_active(false); // clear pre-match state when leaving
         reset_local_pending_game_type(); // clear pending game type when leaving
-        multi_stop_hook.call_target();
         if (rf::local_player) {
             reset_player_additional_data(rf::local_player); // clear player additional data when leaving
         }
+        multi_stop_hook.call_target();
     },
 };
 

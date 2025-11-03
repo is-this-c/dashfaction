@@ -94,6 +94,7 @@ Version 1.2.0 (Willow): Not yet released
 - Add `dbg_numgeos` debug command to count number of geo craters in current level
 
 [@is-this-c](https://github.com/is-this-c)
+- Add `ui_always_show_spectators` command to display spectators in multiplayer
 - Simplify code that fixed broken events if their delay parameter was set
 
 ### Bug fixes

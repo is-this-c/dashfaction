@@ -104,6 +104,8 @@ static rf::ui::Checkbox ao_minimaltimer_cbox;
 static rf::ui::Label ao_minimaltimer_label;
 static rf::ui::Checkbox ao_targetnames_cbox;
 static rf::ui::Label ao_targetnames_label;
+static rf::ui::Checkbox ao_always_show_spectators_cbox{};
+static rf::ui::Label ao_always_show_spectators_label{};
 static rf::ui::Checkbox ao_staticscope_cbox;
 static rf::ui::Label ao_staticscope_label;
 static rf::ui::Checkbox ao_hitsounds_cbox;
@@ -862,6 +864,12 @@ void ao_targetnames_cbox_on_click(int x, int y) {
     ao_play_button_snd(g_alpine_game_config.display_target_player_names);
 }
 
+void ao_always_show_spectators_cbox_on_click(const int x, const int y) {
+    g_alpine_game_config.always_show_spectators = !g_alpine_game_config.always_show_spectators;
+    ao_always_show_spectators_cbox.checked = g_alpine_game_config.always_show_spectators;
+    ao_play_button_snd(g_alpine_game_config.always_show_spectators);
+}
+
 void ao_staticscope_cbox_on_click(int x, int y) {
     g_alpine_game_config.scope_static_sensitivity = !g_alpine_game_config.scope_static_sensitivity;
     ao_staticscope_cbox.checked = g_alpine_game_config.scope_static_sensitivity;
@@ -1152,6 +1160,16 @@ void alpine_options_panel_init() {
         &ao_minimaltimer_cbox, &ao_minimaltimer_label, &alpine_options_panel1, ao_minimaltimer_cbox_on_click, !g_alpine_game_config.verbose_time_left_display, 280, 174, "Minimal timer");
     alpine_options_panel_checkbox_init(
         &ao_targetnames_cbox, &ao_targetnames_label, &alpine_options_panel1, ao_targetnames_cbox_on_click, g_alpine_game_config.display_target_player_names, 280, 204, "Target names");
+    alpine_options_panel_checkbox_init(
+        &ao_always_show_spectators_cbox,
+        &ao_always_show_spectators_label,
+        &alpine_options_panel1,
+        ao_always_show_spectators_cbox_on_click,
+        g_alpine_game_config.always_show_spectators,
+        280,
+        234,
+        "Show spectators"
+    );
 
     // panel 2
     alpine_options_panel_checkbox_init(

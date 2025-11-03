@@ -14,6 +14,7 @@
 #include "../hud/hud_world.h"
 #include "alpine_packets.h"
 #include "../misc/player.h"
+#include "../hud/hud.h"
 
 void af_send_packet(rf::Player* player, const void* data, int len, bool is_reliable)
 {
@@ -89,6 +90,14 @@ bool af_process_packet(const void* data, int len, const rf::NetAddr& addr, rf::P
         case af_packet_type::af_server_info:
             af_process_server_info_packet(data, static_cast<size_t>(len), addr);
             return true;
+        case af_packet_type::af_spectate_start: {
+            af_process_spectate_start_packet(data, static_cast<size_t>(len), addr);
+            return true;
+        }
+        case af_packet_type::af_spectate_notify: {
+            af_process_spectate_notify_packet(data, static_cast<size_t>(len), addr);
+            return true;
+        }
         default:
             return false; // ignore if unrecognized
     }
@@ -1195,4 +1204,139 @@ static void af_process_server_info_packet(const void* data, size_t len, const rf
     server_info.semi_auto_cooldown = static_cast<int>(pkt.semi_auto_cooldown);
 
     //xlog::warn("af_server_info processed - gt {}, cooldown {}", pkt.game_type, server_info.semi_auto_cooldown.value());
+}
+
+void af_send_spectate_start_packet(const rf::Player* const spectatee) {
+    // Are we a client?
+    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+        return;
+    }
+
+    if (!spectatee->net_data) {
+        return;
+    }
+
+    af_spectate_start_packet spectate_start_packet{};
+    spectate_start_packet.header.type =
+        static_cast<uint8_t>(af_packet_type::af_spectate_start);
+    spectate_start_packet.header.size = sizeof(spectate_start_packet)
+        - sizeof(spectate_start_packet.header);
+    spectate_start_packet.spectatee_id = spectatee->net_data->player_id;
+
+    af_send_packet(
+        rf::local_player,
+        &spectate_start_packet,
+        sizeof(spectate_start_packet),
+        true
+    );
+}
+
+void af_process_spectate_start_packet(
+    const void* const data,
+    const size_t len,
+    const rf::NetAddr& addr) {
+    // Are we a server?
+    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+        return;
+    }
+
+    const rf::Player* const spectator = rf::multi_find_player_by_addr(addr);
+    if (!spectator) {
+        return;
+    }
+
+    af_spectate_start_packet spectate_start_packet{};
+    if (len < sizeof(spectate_start_packet )) {
+        return;
+    }
+
+    std::memcpy(&spectate_start_packet, data, sizeof(spectate_start_packet));
+
+    rf::Player* const spectatee = rf::multi_find_player_by_id(
+        spectate_start_packet.spectatee_id
+    );
+    if (!spectatee) {
+        return;
+    }
+
+    auto& pdata = get_player_additional_data(spectator);
+    const bool exited_spectate = spectatee == spectator;
+    if (exited_spectate) {
+        if (pdata.spectatee) {
+            af_send_spectate_notify_packet(pdata.spectatee.value(), spectator, false);
+            pdata.spectatee.reset();
+        }
+    } else {
+        if (pdata.spectatee && pdata.spectatee.value() == spectatee) {
+            return;
+        }
+        if (pdata.spectatee) {
+            af_send_spectate_notify_packet(pdata.spectatee.value(), spectator, false);
+        }
+        af_send_spectate_notify_packet(spectatee, spectator, true);
+        pdata.spectatee.emplace(spectatee);
+    }
+}
+
+void af_send_spectate_notify_packet(
+    rf::Player* const spectatee,
+    const rf::Player* const spectator,
+    const bool does_spectate
+) {
+    // Are we a server?
+    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+        return;
+    }
+
+    if (!spectator->net_data) {
+        return;
+    }
+
+    af_spectate_notify_packet spectate_notify_packet{};
+    spectate_notify_packet.header.type =
+        static_cast<uint8_t>(af_packet_type::af_spectate_notify);
+    spectate_notify_packet.header.size = sizeof(spectate_notify_packet)
+        - sizeof(spectate_notify_packet.header);
+    spectate_notify_packet.spectator_id = spectator->net_data->player_id;
+    spectate_notify_packet.does_spectate = does_spectate;
+
+    af_send_packet(
+        spectatee,
+        &spectate_notify_packet,
+        sizeof(spectate_notify_packet),
+        true
+    );
+}
+
+void af_process_spectate_notify_packet(
+    const void* const data,
+    const size_t len,
+    const rf::NetAddr&
+) {
+    // Are we a client?
+    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+        return;
+    }
+
+    af_spectate_notify_packet spectate_notify_packet{};
+    if (len < sizeof(spectate_notify_packet )) {
+        return;
+    }
+
+    std::memcpy(&spectate_notify_packet, data, sizeof(spectate_notify_packet));
+
+    rf::Player* const spectator = rf::multi_find_player_by_id(
+        spectate_notify_packet.spectator_id
+    );
+    if (!spectator) {
+        return;
+    }
+
+    if (spectate_notify_packet.does_spectate) {
+        g_local_player_spectators.emplace(spectator);
+    } else {
+        g_local_player_spectators.erase(spectator);
+    }
+
+    build_local_player_spectators_strings();
 }

@@ -2,6 +2,7 @@
 #include <patch_common/AsmWriter.h>
 #include <patch_common/FunHook.h>
 #include <patch_common/CallHook.h>
+#include <common/utils/list-utils.h>
 #include <xlog/xlog.h>
 #include "../multi/multi.h"
 #include "../multi/gametype.h"
@@ -16,6 +17,7 @@
 #include "../rf/os/frametime.h"
 #include "../rf/os/console.h"
 #include "../rf/os/os.h"
+#include "../rf/gameseq.h"
 #include "../misc/player.h"
 #include "../main/main.h"
 #include "../graphics/gr.h"
@@ -25,6 +27,8 @@
 #include "../os/console.h"
 #include "hud_internal.h"
 #include "hud.h"
+#include "../misc/player.h"
+#include "multi_scoreboard.h"
 
 static bool g_big_team_scores_hud = false;
 constexpr bool g_debug_team_scores_hud = false;
@@ -608,7 +612,7 @@ static void hud_render_koth_dc_split_scores(
     rf::gr::rect_border(x, y, w, h);
 }
 
-void hud_render_team_scores()
+void multi_hud_render_team_scores()
 {
     int clip_h = rf::gr::clip_height();
     rf::gr::set_color(0, 0, 0, 150);
@@ -765,7 +769,7 @@ void hud_render_team_scores()
     }
 }
 
-CodeInjection hud_render_team_scores_new_gamemodes_patch {
+CodeInjection multi_hud_render_team_scores_new_gamemodes_patch {
     0x00476DEB,
     [](auto& regs) {
         if (gt_is_koth() || gt_is_dc()|| gt_is_rev()) {
@@ -774,7 +778,7 @@ CodeInjection hud_render_team_scores_new_gamemodes_patch {
     }
 };
 
-CallHook<void(int, int, int, rf::gr::Mode)> hud_render_power_ups_gr_bitmap_hook{
+CallHook<void(int, int, int, rf::gr::Mode)> multi_powerup_render_gr_bitmap_hook{
     {
         0x0047FF2F,
         0x0047FF96,
@@ -789,11 +793,11 @@ CallHook<void(int, int, int, rf::gr::Mode)> hud_render_power_ups_gr_bitmap_hook{
     },
 };
 
-FunHook<void()> render_level_info_hook{
+FunHook<void()> multi_hud_render_level_info_hook{
     0x00477180,
     []() {
         gr_font_run_with_default(hud_get_default_font(), [&]() {
-            render_level_info_hook.call_target();
+            multi_hud_render_level_info_hook.call_target();
         });
     },
 };
@@ -886,9 +890,92 @@ void remove_hud_vote_notification()
     g_active_vote_type = "";
 }
 
-CodeInjection hud_render_patch_alpine {
+void build_local_player_spectators_strings() {
+    g_local_player_spectators_spawned_string.clear();
+    g_local_player_spectators_unspawned_string.clear();
+
+    int num_players = 0;
+    std::string names{};
+    for (const rf::Player* const player : g_local_player_spectators) {
+        if (num_players++) {
+            if (num_players == g_local_player_spectators.size()) {
+                if (g_local_player_spectators.size() == 2) {
+                    names += " and ";
+                } else {
+                    names += ", and ";
+                }
+            } else {
+                names += ", ";
+            }
+        }
+        names += player->name.c_str();
+    }
+
+    g_local_player_spectators_unspawned_string = num_players == 1
+        ? names + " is waiting to spectate you"
+        : names + " are waiting to spectate you";
+    g_local_player_spectators_spawned_string = num_players == 1
+        ? names + " is spectating you"
+        : names + " are spectating you";
+}
+
+void multi_hud_render_local_player_spectators() {
+#if DBG_LOCAL_PLAYER_SPECTATORS
+    g_local_player_spectators.clear();
+    for (rf::Player& player : SinglyLinkedList{rf::player_list}) {
+        g_local_player_spectators.emplace(&player);
+    }
+    build_local_player_spectators_strings();
+#endif
+    const bool show_spectators = g_alpine_game_config.always_show_spectators
+        || multi_scoreboard_is_visible();
+    if (show_spectators
+        && !g_local_player_spectators.empty()
+        && !rf::hud_disabled
+        && rf::gameseq_get_state() == rf::GS_GAMEPLAY) {
+        const rf::NetGameType game_type = rf::multi_get_game_type();
+        const bool is_koth_or_dc = game_type == rf::NG_TYPE_KOTH
+            || game_type == rf::NG_TYPE_DC;
+        const bool is_rev = game_type == rf::NG_TYPE_REV;
+        const int box_w = is_koth_or_dc || is_rev
+            ? g_alpine_game_config.big_hud ? 240 : 185
+            : g_alpine_game_config.big_hud ? 370 : 185;
+        constexpr int box_x = 10;
+
+        int x = 10;
+        if (rf::multi_get_game_type() != rf::NG_TYPE_DM) {
+            x += box_x + box_w;
+            if (rf::multi_get_game_type() == rf::NG_TYPE_CTF) {
+                const bool has_flag = rf::multi_ctf_get_blue_flag_player() == rf::local_player
+                    || rf::multi_ctf_get_red_flag_player() == rf::local_player;
+                if (has_flag) {
+                    constexpr int flag_and_space_w = 111;
+                    x += flag_and_space_w;
+                }
+            }
+        }
+        const int y = rf::gr::clip_height() - (g_alpine_game_config.big_hud ? 30 : 20);
+
+        rf::gr::set_color(0, 255, 0, 255);
+        const std::string& text = rf::player_is_dead(rf::local_player)
+            || rf::player_is_dying(rf::local_player)
+            ? g_local_player_spectators_unspawned_string
+            : g_local_player_spectators_spawned_string;
+        rf::gr::string_aligned(
+            rf::gr::ALIGN_LEFT,
+            x,
+            y,
+            text.c_str(),
+            hud_get_default_font()
+        );
+    }
+}
+
+CodeInjection multi_hud_render_patch{
     0x00476D9D,
     [](auto& regs) {
+        multi_hud_render_local_player_spectators();
+
         if (g_draw_vote_notification) {
             hud_render_vote_notification();
         }
@@ -1186,24 +1273,24 @@ FunHook<void(rf::Player*, const char*, int)> chat_add_msg_hook{
 };
 
 // displays name of player you're pointing at
-CallHook<void(int, int, const char*, int, rf::gr::Mode)> display_target_player_name_hook{
+CallHook<void(int, int, const char*, int, rf::gr::Mode)> multi_hud_render_target_player_name_hook{
     0x00478140,
     [](int x, int y, const char* s, int font_num, rf::gr::Mode mode) {
         if (!g_alpine_game_config.display_target_player_names) {
             return;
         }
-        display_target_player_name_hook.call_target(x, y, s, font_num, mode);
+        multi_hud_render_target_player_name_hook.call_target(x, y, s, font_num, mode);
     },
 };
 
-ConsoleCommand2 playernames_cmd{
-    "mp_playernames",
+ConsoleCommand2 ui_playernames_cmd{
+    "ui_playernames",
     []() {
         g_alpine_game_config.display_target_player_names = !g_alpine_game_config.display_target_player_names;
         rf::console::print("Display of names of targeted players is {}", g_alpine_game_config.display_target_player_names ? "enabled" : "disabled");
     },
     "Toggle displaying names of targeted players",
-    "mp_playernames",
+    "ui_playernames",
 };
 
 FunHook<void()> multi_hud_render_time_left_hook{
@@ -1295,28 +1382,41 @@ void build_time_left_string_format() {
     }
 }
 
-ConsoleCommand2 verbosetimer_cmd{
-    "mp_verbosetimer",
+ConsoleCommand2 ui_verbosetimer_cmd{
+    "ui_verbosetimer",
     []() {
         g_alpine_game_config.verbose_time_left_display = !g_alpine_game_config.verbose_time_left_display;
         build_time_left_string_format();
         rf::console::print("Verbose in-game timer display is {}", g_alpine_game_config.verbose_time_left_display ? "enabled" : "disabled");
     },
     "Control whether the in-game timer displays the 'Time Left:' text",
-    "mp_verbosetimer",
+    "ui_verbosetimer",
+};
+
+ConsoleCommand2 ui_always_show_specators_cmd{
+    "ui_always_show_specators",
+    [] {
+        g_alpine_game_config.always_show_spectators = !g_alpine_game_config.always_show_spectators;
+        rf::console::print(
+            "Always show spectators is {}",
+            g_alpine_game_config.always_show_spectators ? "enabled" : "disabled"
+        );
+    },
+    "Toggle display of spectators on your HUD",
+    "ui_always_show_specators",
 };
 
 void multi_hud_apply_patches()
 {
-    hud_render_patch_alpine.install();
-    AsmWriter{0x00477790}.jmp(hud_render_team_scores);
-    hud_render_team_scores_new_gamemodes_patch.install();
-    hud_render_power_ups_gr_bitmap_hook.install();
-    render_level_info_hook.install();
+    multi_hud_render_patch.install();
+    AsmWriter{0x00477790}.jmp(multi_hud_render_team_scores);
+    multi_hud_render_team_scores_new_gamemodes_patch.install();
+    multi_powerup_render_gr_bitmap_hook.install();
+    multi_hud_render_level_info_hook.install();
     multi_hud_init_hook.install();
 
     // Drawing of targeted player names in multi
-    display_target_player_name_hook.install();
+    multi_hud_render_target_player_name_hook.install();
 
     // Play radio message and taunt sounds
     chat_add_msg_hook.install();
@@ -1328,8 +1428,9 @@ void multi_hud_apply_patches()
     multi_hud_handle_final_countdown_injection.install();
 
     // Console commands
-    playernames_cmd.register_cmd();
-    verbosetimer_cmd.register_cmd();
+    ui_playernames_cmd.register_cmd();
+    ui_verbosetimer_cmd.register_cmd();
+    ui_always_show_specators_cmd.register_cmd();
 }
 
 void multi_hud_set_big(bool is_big)
