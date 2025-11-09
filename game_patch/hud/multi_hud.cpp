@@ -1,8 +1,10 @@
+#include <ranges>
 #include <patch_common/CodeInjection.h>
 #include <patch_common/AsmWriter.h>
 #include <patch_common/FunHook.h>
 #include <patch_common/CallHook.h>
 #include <common/utils/list-utils.h>
+#include <common/utils/string-utils.h>
 #include <xlog/xlog.h>
 #include "../multi/multi.h"
 #include "../multi/gametype.h"
@@ -29,6 +31,7 @@
 #include "hud.h"
 #include "../misc/player.h"
 #include "multi_scoreboard.h"
+#include "../multi/alpine_packets.h"
 
 static bool g_big_team_scores_hud = false;
 constexpr bool g_debug_team_scores_hud = false;
@@ -971,9 +974,249 @@ void multi_hud_render_local_player_spectators() {
     }
 }
 
+void RemoteServerCfgPopup::reset() {
+    *this = RemoteServerCfgPopup{};
+}
+
+void RemoteServerCfgPopup::append_lines(const std::string_view lines) {
+    size_t i = 0;
+    const size_t len = lines.size();
+
+    while (i < len) {
+        const size_t new_line = lines.find('\n', i);
+        const bool complete = new_line != std::string_view::npos;
+        std::string_view fragment = complete
+            ? lines.substr(i, new_line - i)
+            : lines.substr(i);
+
+        if (!m_partial_line.empty() && !m_lines.empty()) {
+            m_lines.pop_back();
+        }
+
+        m_partial_line += fragment;
+        append_line(m_partial_line);
+
+        if (complete) {
+            m_partial_line.clear();
+        }
+
+        i = complete ? new_line + 1 : len;
+    }
+}
+
+void RemoteServerCfgPopup::append_line(const std::string_view line) {
+    const size_t colon = line.find(':');
+    if (colon != std::string::npos) {
+        const std::string key{line.substr(0, colon + 1)};
+        const std::string value{ltrim(line.substr(colon + 1))};
+        m_lines.emplace_back(std::make_pair(std::move(key), std::move(value)));
+    } else {
+        m_lines.emplace_back(std::string{line});
+    }
+}
+
+bool RemoteServerCfgPopup::is_active() {
+    return m_is_active;
+}
+
+void RemoteServerCfgPopup::toggle() {
+    m_is_active = !m_is_active;
+    if (m_is_active && m_lines.empty()) {
+        af_send_server_cfg_request();
+    }
+}
+
+CallHook<void(int *dx, int *dy, int *dz)> control_config_get_mouse_delta_hook{
+    0x0043D6D6,
+    [] (int* const dx, int* const dy, int* dz) {
+        // If active, do not write mouse wheel scroll delta.
+        if (g_remote_server_cfg_popup.is_active()) {
+            int tmp{};
+            dz = &tmp;
+        }
+        control_config_get_mouse_delta_hook.call_target(dx, dy, dz);
+    }
+};
+
+void RemoteServerCfgPopup::render() {
+    constexpr float ref_width  = 1280.f;
+    constexpr float ref_height = 800.f;
+
+    const float scale_x = rf::gr::clip_width()  / ref_width;
+    const float scale_y = rf::gr::clip_height() / ref_height;
+    const float ui_scale = std::min(scale_x, scale_y);
+
+    constexpr float base_x = 300.f;
+    constexpr float base_y = 75.f;
+
+    int x = static_cast<int>(base_x * ui_scale);
+    int y = static_cast<int>(base_y * ui_scale);
+    int w = rf::gr::clip_width() - (x * 2);
+    int h = rf::gr::clip_height() - (y * 2);
+
+    const int font_id = hud_get_default_font();
+    const int header_font_id = font_id;
+    const int line_height = rf::gr::get_font_height(font_id);
+
+    int clip_x = 0, clip_y = 0, clip_w = 0, clip_h = 0;
+    rf::gr::get_clip(&clip_x, &clip_y, &clip_w, &clip_h);
+
+    rf::gr::set_color(0, 0, 0, 128);
+    rf::gr::rect(x, y, w, h);
+
+    const float scroll_step = 40.f;
+    int mouse_dx = 0, mouse_dy = 0, mouse_dz = 0;
+    rf::mouse_get_delta(mouse_dx, mouse_dy, mouse_dz);
+    if (mouse_dz != 0) {
+        m_scroll.target += mouse_dz > 0 ? -scroll_step : scroll_step;
+    }
+
+    const float key_scroll_speed = 400.f;
+    if (rf::key_is_down(rf::KEY_UP)) {
+        m_scroll.target -= key_scroll_speed * rf::frametime;
+    }
+    if (rf::key_is_down(rf::KEY_DOWN)) {
+        m_scroll.target += key_scroll_speed * rf::frametime;
+    }
+
+    const int total_height = m_lines.size() * line_height;
+    const int header_h = 10 + rf::gr::get_font_height(header_font_id) + 10;
+    const float max_scroll = static_cast<float>(
+        std::max(0, total_height - h + header_h + 20)
+    );
+    m_scroll.target = std::clamp(m_scroll.target, 0.f, max_scroll);
+
+    const float delta = std::fabs(m_scroll.target - m_scroll.current);
+    // HACKFIX: If its delta falls below 1.f, it can cause stutter.
+    if (delta >= 1.f) {
+        const auto smooth_cd = [] (
+            const float from,
+            const float to,
+            float &vel,
+            const float smooth_time
+        ) {
+            const float omega = 2.f / smooth_time;
+            const float x = omega * rf::frametime;
+            const float exp = 1.f / (1.f + x + .48f * x * x + .235f * x * x * x);
+            const float change = from - to;
+            const float tmp = (vel + omega * change) * rf::frametime;
+            vel = (vel - omega * tmp) * exp;
+            return to + (change + tmp) * exp;
+        };
+
+        m_scroll.current = smooth_cd(
+            m_scroll.current,
+            m_scroll.target,
+            m_scroll.velocity,
+            0.1f
+        );
+    }
+
+    // rf::gr::set_color(100, 100, 100, 30);
+    // rf::gr::rect(x, y, w, header_h);
+    rf::gr::set_color(255, 255, 255, 255);
+    // rf::gr::set_color(255, 200, 100, 255);
+    rf::gr::string_aligned(
+        rf::gr::ALIGN_CENTER,
+        x + (w / 2),
+        y + 10,
+        "REMOTE SERVER CONFIG",
+        header_font_id
+    );
+
+    const int content_x = x;
+    const int content_y = y + header_h;
+    const int content_w = w;
+    const int content_h = h - header_h;
+    rf::gr::set_clip(0, content_y, rf::gr::clip_width(), content_h);
+
+    int line_y = std::lround(10.f - m_scroll.current);
+
+    for (const auto& line : m_lines) {
+        if (line_y + line_height < 0) {
+            line_y += line_height;
+            continue;
+        } else if (line_y > content_h) {
+            break;
+        }
+
+        rf::gr::set_color(255, 255, 255, 255);
+        if (std::holds_alternative<std::pair<std::string, std::string>>(line)) {
+            const auto& [key, value] =
+                std::get<std::pair<std::string, std::string>>(line);
+            rf::gr::string_aligned(
+                rf::gr::ALIGN_LEFT,
+                content_x + 20,
+                line_y,
+                key.c_str(),
+                font_id
+            );
+            if (value == "true") {
+                rf::gr::set_color(0, 220, 130, 255);
+            } else if (value == "false") {
+                rf::gr::set_color(255, 80, 80, 255);
+            } else {
+                rf::gr::set_color(100, 200, 255, 255);
+            }
+            rf::gr::string_aligned(
+                rf::gr::ALIGN_RIGHT,
+                content_x + content_w - static_cast<int>(50.f * ui_scale),
+                line_y,
+                value.c_str(),
+                font_id
+            );
+        } else if (std::holds_alternative<std::string>(line)) {
+            rf::gr::string_aligned(
+                rf::gr::ALIGN_LEFT,
+                content_x + 20,
+                line_y,
+                std::get<std::string>(line).c_str(),
+                font_id
+            );
+        }
+
+        line_y += line_height;
+    }
+
+    if (total_height > content_h) {
+        const float scroll_ratio = m_scroll.current / max_scroll;
+        const float scroll_bar_height = static_cast<float>(content_h)
+            * static_cast<float>(content_h)
+            / total_height;
+        const float scroll_bar_y = scroll_ratio
+            * (static_cast<float>(content_h) - scroll_bar_height);
+
+        const int bar_x = content_x + content_w - 6;
+        const int bar_w = 6;
+
+        // rf::gr::set_color(100, 100, 100, 128);
+        // rf::gr::rect(bar_x, y, bar_w, h);
+
+        // rf::gr::set_color(200, 200, 200, 128);
+        rf::gr::set_color(100, 255, 200, 255);
+        rf::gr::rect(
+            bar_x,
+            std::lround(scroll_bar_y),
+            bar_w,
+            std::lround(scroll_bar_height)
+        );
+    }
+
+    rf::gr::set_clip(clip_x, clip_y, clip_w, clip_h);
+}
+
+
 CodeInjection multi_hud_render_patch{
-    0x00476D9D,
-    [](auto& regs) {
+    0x00476D76,
+    [] {
+        if (g_remote_server_cfg_popup.is_active()) {
+            g_remote_server_cfg_popup.render();
+        }
+
+        if (rf::gameseq_get_state() == rf::GS_MULTI_LIMBO) {
+            return;
+        }
+
         multi_hud_render_local_player_spectators();
 
         if (g_draw_vote_notification) {
@@ -1406,6 +1649,17 @@ ConsoleCommand2 ui_always_show_specators_cmd{
     "ui_always_show_specators",
 };
 
+ConsoleCommand2 ui_remote_server_cfg_cmd{
+    "ui_remote_server_cfg",
+    [] {
+        if (is_server_minimum_af_version(1, 2)) {
+            g_remote_server_cfg_popup.toggle();
+        }
+    },
+    "Toggle display of a server's config",
+};
+
+
 void multi_hud_apply_patches()
 {
     multi_hud_render_patch.install();
@@ -1431,6 +1685,9 @@ void multi_hud_apply_patches()
     ui_playernames_cmd.register_cmd();
     ui_verbosetimer_cmd.register_cmd();
     ui_always_show_specators_cmd.register_cmd();
+    ui_remote_server_cfg_cmd.register_cmd();
+
+    control_config_get_mouse_delta_hook.install();
 }
 
 void multi_hud_set_big(bool is_big)

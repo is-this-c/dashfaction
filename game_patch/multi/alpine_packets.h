@@ -32,6 +32,7 @@ enum class af_packet_type : uint8_t
     af_server_info = 0x5A,              // Alpine 1.2
     af_spectate_start = 0x5B,           // Alpine 1.2
     af_spectate_notify = 0x5C,          // Alpine 1.2
+    af_server_msg = 0x5D,                      // Alpine 1.2
 };
 
 struct af_ping_location_req_packet
@@ -72,7 +73,8 @@ struct af_obj_update_packet
 
 enum class af_client_req_type : uint8_t
 {
-    af_req_handicap = 0x00,
+    af_req_handicap = 0x0,
+    af_req_server_cfg = 0x1,
 };
 
 struct HandicapPayload
@@ -80,7 +82,7 @@ struct HandicapPayload
     uint8_t amount = 0;
 };
 
-using af_client_payload = std::variant<HandicapPayload>;
+using af_client_payload = std::variant<HandicapPayload, std::monostate>;
 
 struct af_client_req_packet
 {
@@ -192,6 +194,16 @@ struct af_spectate_notify_packet {
     bool does_spectate;
 };
 
+enum af_server_msg_type : uint8_t {
+    AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG = 0x1,
+};
+
+struct af_server_msg_packet {
+    RF_GamePacketHeader header;
+    uint8_t type;
+    char data[];
+};
+
 #pragma pack(pop)
 
 bool af_process_packet(const void* data, int len, const rf::NetAddr& addr, rf::Player* player);
@@ -223,6 +235,9 @@ void af_send_spectate_start_packet(const rf::Player* spectatee);
 void af_process_spectate_start_packet(const void* data, size_t len, const rf::NetAddr&);
 void af_send_spectate_notify_packet(rf::Player* player, const rf::Player* spectator, bool does_spectate);
 void af_process_spectate_notify_packet(const void* data, size_t len, const rf::NetAddr&);
+void af_send_server_cfg(rf::Player* player);
+void af_process_server_msg_packet(const void* data, size_t len, const rf::NetAddr&);
 
 // client requests
 void af_send_handicap_request(uint8_t amount);
+void af_send_server_cfg_request();

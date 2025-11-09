@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cassert>
 #include <array>
+#include <ranges>
 #include <common/utils/list-utils.h>
 #include <common/rfproto.h>
 #include <xlog/xlog.h>
@@ -96,6 +97,10 @@ bool af_process_packet(const void* data, int len, const rf::NetAddr& addr, rf::P
         }
         case af_packet_type::af_spectate_notify: {
             af_process_spectate_notify_packet(data, static_cast<size_t>(len), addr);
+            return true;
+        }
+        case af_packet_type::af_server_msg: {
+            af_process_server_msg_packet(data, static_cast<size_t>(len), addr);
             return true;
         }
         default:
@@ -487,6 +492,27 @@ void serialize_payload(const HandicapPayload& payload, std::byte* buf, size_t& o
     buf[offset++] = static_cast<std::byte>(payload.amount);
 }
 
+void af_send_server_cfg_request() {
+    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+        return;
+    }
+
+    af_client_req_packet client_req_packet{};
+    client_req_packet.header.type = static_cast<uint8_t>(af_packet_type::af_client_req);
+    client_req_packet.header.size = sizeof(uint8_t);
+    client_req_packet.req_type = af_client_req_type::af_req_server_cfg;
+    client_req_packet.payload = std::monostate{};
+
+    af_send_client_req_packet(client_req_packet);
+}
+
+void serialize_payload(
+    const std::monostate& payload,
+    const std::byte* const buf,
+    const size_t& offset
+) {
+}
+
 // send client request packet
 void af_send_client_req_packet(const af_client_req_packet& packet)
 {
@@ -569,10 +595,18 @@ static void af_process_client_req_packet(const void* data, size_t len, const rf:
             handle_player_set_handicap(player, amount);
             break;
         }
-
-        default:
+        case af_client_req_type::af_req_server_cfg: {
+            auto& pdata = get_player_additional_data(player);
+            if (!pdata.remote_server_cfg_sent) {
+                af_send_server_cfg(player);
+                pdata.remote_server_cfg_sent = true;
+            }
+            break;
+        }
+        default: {
             xlog::warn("af_process_client_req_packet: Unknown req_type {}", static_cast<int>(req_type));
             return;
+        }
     }
 }
 
@@ -1340,3 +1374,73 @@ void af_process_spectate_notify_packet(
 
     build_local_player_spectators_strings();
 }
+
+void af_send_server_cfg(rf::Player* player) {
+    // Are we a server?
+    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+        return;
+    }
+
+    std::string output{};
+    print_alpine_dedicated_server_config_info(output, true);
+
+    const auto send_msg = [player] (const std::string_view data) {
+        constexpr size_t max_chunk_len = rf::max_packet_size - sizeof(af_server_msg_packet);
+        const size_t len = std::clamp(data.size(), 0uz, max_chunk_len);
+
+        af_server_msg_packet msg_packet;
+        msg_packet.header.type = static_cast<uint8_t>(af_packet_type::af_server_msg);
+        msg_packet.header.size = static_cast<uint16_t>(
+            sizeof(msg_packet)
+                - sizeof(msg_packet.header)
+                + len
+        );
+        msg_packet.type = static_cast<uint8_t>(AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG);
+
+        std::array<uint8_t, sizeof(msg_packet) + max_chunk_len> buf{}; 
+        std::memcpy(buf.data(), &msg_packet, sizeof(msg_packet));
+        uint8_t* msg = buf.data() + sizeof(msg_packet);
+        std::memcpy(msg, data.data(), len);
+
+        rf::multi_io_send_reliable(
+            player,
+            buf.data(),
+            msg_packet.header.size + sizeof(msg_packet.header),
+            0
+        );
+
+        return len;
+    };
+
+    constexpr int chunk_size = rf::max_packet_size - sizeof(af_server_msg_packet);
+    for (const auto chunk: output | std::views::chunk(chunk_size)) {
+        send_msg(std::string_view{chunk.begin(), chunk.end()});
+    }
+}
+
+void af_process_server_msg_packet(
+    const void* const data,
+    const size_t len,
+    const rf::NetAddr&
+) {
+    // Are we a client?
+    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+        return;
+    }
+
+    af_server_msg_packet msg_packet;
+    if (len < sizeof(msg_packet )) {
+        return;
+    }
+
+    std::memcpy(&msg_packet, data, sizeof(msg_packet));
+
+    if (msg_packet.type == static_cast<uint8_t>(AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG)) {
+        const char* msg = static_cast<const char*>(data) + sizeof(msg_packet);
+        g_remote_server_cfg_popup.append_lines(
+            std::string_view{msg, len - sizeof(msg_packet)}
+        );
+    }
+}
+
+

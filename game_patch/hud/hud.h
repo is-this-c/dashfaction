@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../rf/input.h"
+#include <variant>
+#include <vector>
 
 enum class ChatMenuType : int
 {
@@ -28,3 +30,25 @@ bool get_chat_menu_is_active();
 void hud_render_draw_chat_menu();
 void chat_menu_action_handler(rf::Key key);
 void build_local_player_spectators_strings();
+
+inline struct RemoteServerCfgPopup {
+public:
+    void reset();
+    void append_lines(std::string_view data);
+    bool is_active();
+    void toggle();
+    void render();
+
+private:
+    void append_line(const std::string_view line);
+
+    using Line = std::variant<std::string, std::pair<std::string, std::string>>;
+    std::vector<Line> m_lines{};
+    std::string m_partial_line{};
+    bool m_is_active = false;
+    struct {
+        float current = 0.f;
+        float target = 0.f;
+        float velocity = 0.f;
+    } m_scroll{};
+} g_remote_server_cfg_popup{};

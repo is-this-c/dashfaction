@@ -18,6 +18,7 @@
 #include "../rf/player/player.h"
 #include "../rf/os/console.h"
 #include "../rf/os/os.h"
+#include "../multi/alpine_packets.h"
 
 static int starting_alpine_control_index = -1;
 
@@ -205,32 +206,41 @@ CodeInjection control_config_init_patch{
             starting_alpine_control_index = ccp->num_bindings;
         }        
 
-        alpine_control_config_add_item( // F
-            ccp, "Toggle headlamp", 0, 0x21, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_FLASHLIGHT);
-        alpine_control_config_add_item( // L
-            ccp, "Skip cutscene", 0, 0x26, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SKIP_CUTSCENE);
-        alpine_control_config_add_item( // K
-            ccp, "Respawn", 0, 0x25, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SELF_KILL);
-        alpine_control_config_add_item( // F1
-            ccp, "Vote yes", 0, 0x3B, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES);
-        alpine_control_config_add_item( // F2
-            ccp, "Vote no", 0, 0x3C, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO);
-        alpine_control_config_add_item( // F3
-            ccp, "Ready for match", 0, 0x3D, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_READY);
-        alpine_control_config_add_item( // G
-            ccp, "Drop flag", 0, 0x22, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_DROP_FLAG);
-        alpine_control_config_add_item( // V
-            ccp, "Radio message menu", 0, 0x2F, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU);
-        alpine_control_config_add_item( // B
-            ccp, "Taunt menu", 0, 0x30, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU);
-        alpine_control_config_add_item( // N
-            ccp, "Command menu", 0, 0x31, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU);
+        alpine_control_config_add_item(
+            ccp, "Toggle headlamp", 0, rf::KEY_F, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_FLASHLIGHT);
+        alpine_control_config_add_item(
+            ccp, "Skip cutscene", 0, rf::KEY_L, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SKIP_CUTSCENE);
+        alpine_control_config_add_item(
+            ccp, "Respawn", 0, rf::KEY_K, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SELF_KILL);
+        alpine_control_config_add_item(
+            ccp, "Vote yes", 0, rf::KEY_F1, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES);
+        alpine_control_config_add_item(
+            ccp, "Vote no", 0, rf::KEY_F2, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO);
+        alpine_control_config_add_item(
+            ccp, "Ready for match", 0, rf::KEY_F3, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_READY);
+        alpine_control_config_add_item(
+            ccp, "Drop flag", 0, rf::KEY_G, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_DROP_FLAG);
+        alpine_control_config_add_item(
+            ccp, "Radio message menu", 0, rf::KEY_V, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU);
+        alpine_control_config_add_item(
+            ccp, "Taunt menu", 0, rf::KEY_B, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU);
+        alpine_control_config_add_item(
+            ccp, "Command menu", 0, rf::KEY_N, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU);
         alpine_control_config_add_item( // Mouse 3
             ccp, "Ping location", 0, -1, -1, 2, rf::AlpineControlConfigAction::AF_ACTION_PING_LOCATION);
-        alpine_control_config_add_item( // ,
-            ccp, "Spectate mode menu", 0, 0x33, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU);
+        alpine_control_config_add_item(
+            ccp, "Spectate mode menu", 0, rf::KEY_COMMA, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU);
         alpine_control_config_add_item(
             ccp, "Suppress autoswitch", 0, -1, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_NO_AUTOSWITCH);
+        alpine_control_config_add_item(
+            ccp,
+            "Show a server's config",
+            false,
+            rf::KEY_F2,
+            -1,
+            -1,
+            rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG
+        );
     },
 };
 
@@ -272,45 +282,46 @@ CodeInjection player_execute_action_patch{
 // alpine controls that activate in active multiplayer game (player spawned or not, but not during limbo)
 CodeInjection player_execute_action_patch2{
     0x004A624B,
-    [](auto& regs) {
-
-        rf::ControlConfigAction action = regs.ebp;
+    [] (const auto& regs) {
+        const rf::ControlConfigAction action = regs.ebp;
         int action_index = static_cast<int>(action);
-        //xlog::warn("executing action {}", action_index);
+        // xlog::warn("executing action {}", action_index);
 
         // only intercept alpine controls
         if (action_index >= starting_alpine_control_index) {
-            if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES) &&
-                rf::is_multi && !rf::is_server) {
+            const int alpine_action_index = action_index - starting_alpine_control_index;
+            if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES)
+                && rf::is_multi
+                && !rf::is_server) {
                 send_chat_line_packet("/vote yes", nullptr);
                 remove_hud_vote_notification();
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO) &&
-                rf::is_multi && !rf::is_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO)
+                && rf::is_multi
+                && !rf::is_server) {
                 send_chat_line_packet("/vote no", nullptr);
                 remove_hud_vote_notification();
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_READY) &&
-                rf::is_multi && !rf::is_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_READY)
+                && rf::is_multi
+                && !rf::is_server) {
                 send_chat_line_packet("/ready", nullptr);
                 draw_hud_ready_notification(false);
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU) &&
-                rf::is_multi && !rf::is_dedicated_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU)
+                && rf::is_multi
+                && !rf::is_dedicated_server) {
                 toggle_chat_menu(ChatMenuType::Comms);
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU) &&
-                rf::is_multi && !rf::is_dedicated_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU)
+                && rf::is_multi
+                && !rf::is_dedicated_server) {
                 toggle_chat_menu(ChatMenuType::Taunts);
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU) &&
-                rf::is_multi && !rf::is_dedicated_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU)
+                && rf::is_multi
+                && !rf::is_dedicated_server) {
                 toggle_chat_menu(ChatMenuType::Commands);
             }
         }
@@ -320,28 +331,33 @@ CodeInjection player_execute_action_patch2{
 // alpine controls that activate any time in multiplayer 
 CodeInjection player_execute_action_patch3{
     0x004A6233,
-    [](auto& regs) {
-
+    [] (const auto& regs) {
         rf::ControlConfigAction action = regs.ebp;
         int action_index = static_cast<int>(action);
-        //xlog::warn("executing action {}", action_index);
+        // xlog::warn("executing action {}", action_index);
 
         // only intercept alpine controls
         if (action_index >= starting_alpine_control_index) {
-            if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES) &&
-                rf::gameseq_get_state() == rf::GS_MULTI_LIMBO && !rf::is_server) {
+            const int alpine_action_index = action_index - starting_alpine_control_index;
+            if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES)
+                && rf::gameseq_get_state() == rf::GS_MULTI_LIMBO
+                && !rf::is_server) {
                 multi_attempt_endgame_vote(true);
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO) &&
-                rf::gameseq_get_state() == rf::GS_MULTI_LIMBO && !rf::is_server) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO)
+                && rf::gameseq_get_state() == rf::GS_MULTI_LIMBO
+                && !rf::is_server) {
                 multi_attempt_endgame_vote(false);
-            }
-            else if (action_index == starting_alpine_control_index +
-                static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU) &&
-                !rf::is_dedicated_server && multi_spectate_is_spectating()) {
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU) &&
+                !rf::is_dedicated_server
+                && multi_spectate_is_spectating()) {
                 toggle_chat_menu(ChatMenuType::Spectate);
+            } else if (alpine_action_index
+                == static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG)
+                && is_server_minimum_af_version(1, 2)) {
+                g_remote_server_cfg_popup.toggle();
             }
         }
     },
@@ -355,7 +371,7 @@ CodeInjection controls_process_patch{
 
         // C++ doesn't have a way to dynamically get the last enum index, so just update this when adding new controls
         if (index >= starting_alpine_control_index &&
-            index <= static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_NO_AUTOSWITCH)) {
+            index <= static_cast<int>(rf::AlpineControlConfigAction::_AF_ACTION_LAST_VARIANT)) {
             //xlog::warn("passing control {}", index);
             regs.eip = 0x00430E24;
         }

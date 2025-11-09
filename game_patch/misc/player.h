@@ -46,6 +46,7 @@ struct PlayerAdditionalData
     rf::Timestamp respawn_timer; // only used when configured in ADS
     uint8_t damage_handicap = 0; // percentile
     std::optional<rf::Player*> spectatee{};
+    bool remote_server_cfg_sent = false;
 };
 
 inline rf::Timestamp g_respawn_timer_local;

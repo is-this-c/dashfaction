@@ -406,7 +406,7 @@ void hud_render_00437BC0()
     bool limbo = rf::gameseq_get_state() == rf::GS_MULTI_LIMBO;
     bool show_scoreboard = scoreboard_control_pressed || (!multi_spectate_is_spectating() && is_player_dead) || limbo;
 
-    scoreboard_maybe_render(show_scoreboard);
+    scoreboard_maybe_render(show_scoreboard && !g_remote_server_cfg_popup.is_active());
 }
 
 void hud_apply_patches()

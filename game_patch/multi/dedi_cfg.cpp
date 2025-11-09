@@ -1143,8 +1143,10 @@ std::string get_game_type_string_long(rf::NetGameType game_type) {
     return out_string;
 }
 
-void print_gungame(const GunGameConfig& cur, const GunGameConfig& base_cfg, bool base = true)
+void print_gungame(std::string& output, const GunGameConfig& cur, const GunGameConfig& base_cfg, bool base = true)
 {
+    const auto iter = std::back_inserter(output);
+
     // helper functions
     auto gg_level_equal = [](const GunGameLevelEntry& a, const GunGameLevelEntry& b) {
         return a.kills == b.kills && a.tier == b.tier && a.weapon_index == b.weapon_index;
@@ -1183,20 +1185,20 @@ void print_gungame(const GunGameConfig& cur, const GunGameConfig& base_cfg, bool
     // end helpers
 
     if (base || cur.enabled != base_cfg.enabled)
-        rf::console::print("  GunGame:                               {}\n", cur.enabled);
+        std::format_to(iter, "  GunGame:                               {}\n", cur.enabled);
 
     if (!cur.enabled)
         return;
 
     if (base || cur.dynamic_progression != base_cfg.dynamic_progression)
-        rf::console::print("    Dynamic progression:                 {}\n", cur.dynamic_progression);
+        std::format_to(iter, "    Dynamic progression:                 {}\n", cur.dynamic_progression);
     if (base || cur.rampage_rewards != base_cfg.rampage_rewards)
-        rf::console::print("    Rampage rewards:                     {}\n", cur.rampage_rewards);
+        std::format_to(iter, "    Rampage rewards:                     {}\n", cur.rampage_rewards);
 
     bool cur_final = cur.final_level.has_value();
     bool base_final = base_cfg.final_level.has_value();
     if (base || cur_final != base_final)
-        rf::console::print("    Final level:                         {}\n", cur_final);
+        std::format_to(iter, "    Final level:                         {}\n", cur_final);
 
     if (cur.final_level) {
         bool print_details = base;
@@ -1206,8 +1208,8 @@ void print_gungame(const GunGameConfig& cur, const GunGameConfig& base_cfg, bool
             print_details = true;
 
         if (print_details) {
-            rf::console::print("      Kills:                             {}\n", cur.final_level->kills);
-            rf::console::print("      Weapon:                            {}\n", cur.final_level->weapon_name);
+            std::format_to(iter, "      Kills:                             {}\n", cur.final_level->kills);
+            std::format_to(iter, "      Weapon:                            {}\n", cur.final_level->weapon_name);
         }
     }
 
@@ -1223,112 +1225,113 @@ void print_gungame(const GunGameConfig& cur, const GunGameConfig& base_cfg, bool
         return;
 
     if (dyn) {
-        rf::console::print("    Dynamic tiers:\n");
-        for (auto const& e : cur_levels) rf::console::print("      Tier {:<3} -> {}\n", e.tier, e.weapon_name);
+        std::format_to(iter, "    Dynamic tiers:\n");
+        for (auto const& e : cur_levels) std::format_to(iter, "      Tier {:<3} -> {}\n", e.tier, e.weapon_name);
     }
     else {
-        rf::console::print("    Levels (kills -> weapon):\n");
-        for (auto const& e : cur_levels) rf::console::print("      {:>4} -> {}\n", e.kills, e.weapon_name);
+        std::format_to(iter, "    Levels (kills -> weapon):\n");
+        for (auto const& e : cur_levels) std::format_to(iter, "      {:>4} -> {}\n", e.kills, e.weapon_name);
     }
 }
 
-void print_rules(const AlpineServerConfigRules& rules, bool base = true)
+void print_rules(std::string& output, const AlpineServerConfigRules& rules, bool base = true)
 {
+    const auto iter = std::back_inserter(output);
     const auto& b = g_alpine_server_config.base_rules;
 
     // game type
     if (base || rules.game_type != b.game_type)
-        rf::console::print("  Game type:                             {}\n", get_game_type_string(rules.game_type));
+        std::format_to(iter, "  Game type:                             {}\n", get_game_type_string(rules.game_type));
 
     // time limit
     if (base || rules.time_limit != b.time_limit)
-        rf::console::print("  Time limit:                            {} min\n", rules.time_limit / 60.0f);
+        std::format_to(iter, "  Time limit:                            {} min\n", rules.time_limit / 60.0f);
 
     // score limits
     if (base || rules.individual_kill_limit != b.individual_kill_limit)
-        rf::console::print("  Player score limit (DM):               {}\n", rules.individual_kill_limit);
+        std::format_to(iter, "  Player score limit (DM):               {}\n", rules.individual_kill_limit);
     if (base || rules.team_kill_limit != b.team_kill_limit)
-        rf::console::print("  Team score limit (TDM):                {}\n", rules.team_kill_limit);
+        std::format_to(iter, "  Team score limit (TDM):                {}\n", rules.team_kill_limit);
     if (base || rules.cap_limit != b.cap_limit)
-        rf::console::print("  Flag capture limit (CTF):              {}\n", rules.cap_limit);
+        std::format_to(iter, "  Flag capture limit (CTF):              {}\n", rules.cap_limit);
     if (base || rules.koth_score_limit != b.koth_score_limit)
-        rf::console::print("  Team score limit (KOTH):               {}\n", rules.koth_score_limit);
+        std::format_to(iter, "  Team score limit (KOTH):               {}\n", rules.koth_score_limit);
     if (base || rules.dc_score_limit != b.dc_score_limit)
-        rf::console::print("  Team score limit (DC):                 {}\n", rules.dc_score_limit);
+        std::format_to(iter, "  Team score limit (DC):                 {}\n", rules.dc_score_limit);
 
     // common limits & flags
     if (base || rules.geo_limit != b.geo_limit)
-        rf::console::print("  Geomod crater limit:                   {}\n", rules.geo_limit);
+        std::format_to(iter, "  Geomod crater limit:                   {}\n", rules.geo_limit);
     if (base || rules.team_damage != b.team_damage)
-        rf::console::print("  Team damage:                           {}\n", rules.team_damage);
+        std::format_to(iter, "  Team damage:                           {}\n", rules.team_damage);
     if (base || rules.fall_damage != b.fall_damage)
-        rf::console::print("  Fall damage:                           {}\n", rules.fall_damage);
+        std::format_to(iter, "  Fall damage:                           {}\n", rules.fall_damage);
     if (base || rules.weapons_stay != b.weapons_stay)
-        rf::console::print("  Weapon stay:                           {}\n", rules.weapons_stay);
+        std::format_to(iter, "  Weapon stay:                           {}\n", rules.weapons_stay);
     if (base || rules.force_respawn != b.force_respawn)
-        rf::console::print("  Force respawn:                         {}\n", rules.force_respawn);
+        std::format_to(iter, "  Force respawn:                         {}\n", rules.force_respawn);
     if (base || rules.balance_teams != b.balance_teams)
-        rf::console::print("  Balance teams:                         {}\n", rules.balance_teams);
+        std::format_to(iter, "  Balance teams:                         {}\n", rules.balance_teams);
     if (base || rules.ideal_player_count != b.ideal_player_count)
-        rf::console::print("  Ideal player count:                    {}\n", rules.ideal_player_count);
+        std::format_to(iter, "  Ideal player count:                    {}\n", rules.ideal_player_count);
     if (base || rules.saving_enabled != b.saving_enabled)
-        rf::console::print("  Position saving:                       {}\n", rules.saving_enabled);
+        std::format_to(iter, "  Position saving:                       {}\n", rules.saving_enabled);
     if (base || rules.flag_dropping != b.flag_dropping)
-        rf::console::print("  Flag dropping (CTF):                   {}\n", rules.flag_dropping);
+        std::format_to(iter, "  Flag dropping (CTF):                   {}\n", rules.flag_dropping);
     if (base || rules.flag_captures_while_stolen != b.flag_captures_while_stolen)
-        rf::console::print("  Flag captures while stolen (CTF):      {}\n", rules.flag_captures_while_stolen);
+        std::format_to(iter, "  Flag captures while stolen (CTF):      {}\n", rules.flag_captures_while_stolen);
     if (base || rules.ctf_flag_return_time_ms != b.ctf_flag_return_time_ms)
-        rf::console::print("  Flag return time (CTF):                {} sec\n", rules.ctf_flag_return_time_ms / 1000.0f);
+        std::format_to(iter, "  Flag return time (CTF):                {} sec\n", rules.ctf_flag_return_time_ms / 1000.0f);
     if (base || rules.pvp_damage_modifier != b.pvp_damage_modifier)
-        rf::console::print("  PvP damage modifier:                   {}\n", rules.pvp_damage_modifier);
+        std::format_to(iter, "  PvP damage modifier:                   {}\n", rules.pvp_damage_modifier);
     if (base || rules.drop_amps != b.drop_amps)
-        rf::console::print("  Drop amps:                             {}\n", rules.drop_amps);
+        std::format_to(iter, "  Drop amps:                             {}\n", rules.drop_amps);
     if (base || rules.drop_weapons != b.drop_weapons)
-        rf::console::print("  Drop weapons:                          {}\n", rules.drop_weapons);
+        std::format_to(iter, "  Drop weapons:                          {}\n", rules.drop_weapons);
     if (base || rules.weapon_items_give_full_ammo != b.weapon_items_give_full_ammo)
-        rf::console::print("  Weapon pickups give full ammo:         {}\n", rules.weapon_items_give_full_ammo);
+        std::format_to(iter, "  Weapon pickups give full ammo:         {}\n", rules.weapon_items_give_full_ammo);
     if (base || rules.weapon_infinite_magazines != b.weapon_infinite_magazines)
-        rf::console::print("  Infinite reloads:                      {}\n", rules.weapon_infinite_magazines);
+        std::format_to(iter, "  Infinite reloads:                      {}\n", rules.weapon_infinite_magazines);
 
     if (base || rules.welcome_message.enabled != b.welcome_message.enabled ||
         (rules.welcome_message.enabled && rules.welcome_message.welcome_message != b.welcome_message.welcome_message)) {
-        rf::console::print("  Welcome message:                       {}\n", rules.welcome_message.enabled);
+        std::format_to(iter, "  Welcome message:                       {}\n", rules.welcome_message.enabled);
         if (rules.welcome_message.enabled) {
-            rf::console::print("    Text:                                {}\n", rules.welcome_message.welcome_message);
+            std::format_to(iter, "    Text:                                {}\n", rules.welcome_message.welcome_message);
         }
     }
 
     // spawn weapon
     if (base || rules.default_player_weapon.index != b.default_player_weapon.index ||
         (rules.default_player_weapon.num_clips != b.default_player_weapon.num_clips)) {
-        rf::console::print("  Spawn weapon:                          {}\n", rules.default_player_weapon.weapon_name);
-        rf::console::print("    Reserve clips:                       {}\n", rules.default_player_weapon.num_clips);
+        std::format_to(iter, "  Spawn weapon:                          {}\n", rules.default_player_weapon.weapon_name);
+        std::format_to(iter, "    Reserve clips:                       {}\n", rules.default_player_weapon.num_clips);
     }
 
     // spawn life
     if (base || rules.spawn_life.enabled != b.spawn_life.enabled ||
         (rules.spawn_life.enabled && rules.spawn_life.value != b.spawn_life.value)) {
-        rf::console::print("  Custom spawn health:                   {}\n", rules.spawn_life.enabled);
+        std::format_to(iter, "  Custom spawn health:                   {}\n", rules.spawn_life.enabled);
         if (rules.spawn_life.enabled) {
-            rf::console::print("    Value:                               {}\n", rules.spawn_life.value);
+            std::format_to(iter, "    Value:                               {}\n", rules.spawn_life.value);
         }
     }
 
     // spawn armour
     if (base || rules.spawn_armour.enabled != b.spawn_armour.enabled ||
         (rules.spawn_armour.enabled && rules.spawn_armour.value != b.spawn_armour.value)) {
-        rf::console::print("  Custom spawn armor:                    {}\n", rules.spawn_armour.enabled);
+        std::format_to(iter, "  Custom spawn armor:                    {}\n", rules.spawn_armour.enabled);
         if (rules.spawn_armour.enabled) {
-            rf::console::print("    Value:                               {}\n", rules.spawn_armour.value);
+            std::format_to(iter, "    Value:                               {}\n", rules.spawn_armour.value);
         }
     }
 
     // spawn delay
     if (base || rules.spawn_delay.enabled != b.spawn_delay.enabled ||
         (rules.spawn_delay.enabled && rules.spawn_delay.base_value != b.spawn_delay.base_value)) {
-        rf::console::print("  Spawn delay:                           {}\n", rules.spawn_delay.enabled);
+        std::format_to(iter, "  Spawn delay:                           {}\n", rules.spawn_delay.enabled);
         if (rules.spawn_delay.enabled) {
-            rf::console::print("    Base seconds:                        {} sec\n", rules.spawn_delay.base_value / 1000.0f);
+            std::format_to(iter, "    Base seconds:                        {} sec\n", rules.spawn_delay.base_value / 1000.0f);
         }
     }
 
@@ -1345,7 +1348,7 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     );
 
     if (base || anySpawnLoadoutChanged) {
-        rf::console::print("  Spawn loadout:\n");
+        std::format_to(iter, "  Spawn loadout:\n");
         for (auto const& e : rules.spawn_loadout.red_weapons) {
             bool unchanged = std::any_of(
                 b.spawn_loadout.red_weapons.begin(), b.spawn_loadout.red_weapons.end(), [&](auto const& be) {
@@ -1353,8 +1356,8 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
                 }
             );
             if (base || !unchanged) {
-                rf::console::print("    {:<20}                 {}\n", e.weapon_name, e.enabled);
-                rf::console::print("      Extra ammo:                        {}\n", e.reserve_ammo);
+                std::format_to(iter, "    {:<20}                 {}\n", e.weapon_name, e.enabled);
+                std::format_to(iter, "      Extra ammo:                        {}\n", e.reserve_ammo);
             }
         }
     }
@@ -1363,10 +1366,10 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     if (base || rules.spawn_protection.enabled != b.spawn_protection.enabled ||
         (rules.spawn_protection.enabled && (rules.spawn_protection.duration != b.spawn_protection.duration ||
                                             rules.spawn_protection.use_powerup != b.spawn_protection.use_powerup))) {
-        rf::console::print("  Spawn protection:                      {}\n", rules.spawn_protection.enabled);
+        std::format_to(iter, "  Spawn protection:                      {}\n", rules.spawn_protection.enabled);
         if (rules.spawn_protection.enabled) {
-            rf::console::print("    Duration:                            {} sec\n", rules.spawn_protection.duration / 1000.0f);
-            rf::console::print("    Use powerup:                         {}\n", rules.spawn_protection.use_powerup);
+            std::format_to(iter, "    Duration:                            {} sec\n", rules.spawn_protection.duration / 1000.0f);
+            std::format_to(iter, "    Use powerup:                         {}\n", rules.spawn_protection.use_powerup);
         }
     }
 
@@ -1381,19 +1384,19 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
         rules.spawn_logic.dynamic_respawn_items.size() != b.spawn_logic.dynamic_respawn_items.size();
 
     if (base || spawnLogicChanged) {
-        rf::console::print("  Spawn logic:\n");
+        std::format_to(iter, "  Spawn logic:\n");
         if (base || rules.spawn_logic.respect_team_spawns != b.spawn_logic.respect_team_spawns)
-            rf::console::print("    Respect team spawns:                 {}\n", rules.spawn_logic.respect_team_spawns);
+            std::format_to(iter, "    Respect team spawns:                 {}\n", rules.spawn_logic.respect_team_spawns);
         if (base || rules.spawn_logic.try_avoid_players != b.spawn_logic.try_avoid_players)
-            rf::console::print("    Try avoid players:                   {}\n", rules.spawn_logic.try_avoid_players);
+            std::format_to(iter, "    Try avoid players:                   {}\n", rules.spawn_logic.try_avoid_players);
         if (base || rules.spawn_logic.always_avoid_last != b.spawn_logic.always_avoid_last)
-            rf::console::print("    Always avoid last:                   {}\n", rules.spawn_logic.always_avoid_last);
+            std::format_to(iter, "    Always avoid last:                   {}\n", rules.spawn_logic.always_avoid_last);
         if (base || rules.spawn_logic.always_use_furthest != b.spawn_logic.always_use_furthest)
-            rf::console::print("    Always use furthest:                 {}\n", rules.spawn_logic.always_use_furthest);
+            std::format_to(iter, "    Always use furthest:                 {}\n", rules.spawn_logic.always_use_furthest);
         if (base || rules.spawn_logic.only_avoid_enemies != b.spawn_logic.only_avoid_enemies)
-            rf::console::print("    Only avoid enemies:                  {}\n", rules.spawn_logic.only_avoid_enemies);
+            std::format_to(iter, "    Only avoid enemies:                  {}\n", rules.spawn_logic.only_avoid_enemies);
         if (base || rules.spawn_logic.dynamic_respawns != b.spawn_logic.dynamic_respawns)
-            rf::console::print("    Create item dynamic respawns:        {}\n", rules.spawn_logic.dynamic_respawns);
+            std::format_to(iter, "    Create item dynamic respawns:        {}\n", rules.spawn_logic.dynamic_respawns);
 
         if ((base || (rules.spawn_logic.dynamic_respawns != b.spawn_logic.dynamic_respawns ||
                       rules.spawn_logic.dynamic_respawn_items.size() != b.spawn_logic.dynamic_respawn_items.size())) &&
@@ -1405,7 +1408,7 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
                                                         bi.min_respawn_points == item.min_respawn_points;
                                              });
                 if (base || !unchanged) {
-                    rf::console::print("      Dynamic respawn item:              {} (threshold: {})\n", item.item_name,
+                    std::format_to(iter, "      Dynamic respawn item:              {} (threshold: {})\n", item.item_name,
                                        item.min_respawn_points);
                 }
             }
@@ -1420,12 +1423,12 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
                       rules.kill_rewards.kill_reward_armor_super != b.kill_rewards.kill_reward_armor_super;
 
     if (base || rewardDiff) {
-        rf::console::print("  Kill rewards:\n");
-        rf::console::print("    Health:                              {}\n", rules.kill_rewards.kill_reward_health);
-        rf::console::print("    Armor:                               {}\n", rules.kill_rewards.kill_reward_armor);
-        rf::console::print("    Effective health:                    {}\n", rules.kill_rewards.kill_reward_effective_health);
-        rf::console::print("    Health is super:                     {}\n", rules.kill_rewards.kill_reward_health_super);
-        rf::console::print("    Armor is super:                      {}\n", rules.kill_rewards.kill_reward_armor_super);
+        std::format_to(iter, "  Kill rewards:\n");
+        std::format_to(iter, "    Health:                              {}\n", rules.kill_rewards.kill_reward_health);
+        std::format_to(iter, "    Armor:                               {}\n", rules.kill_rewards.kill_reward_armor);
+        std::format_to(iter, "    Effective health:                    {}\n", rules.kill_rewards.kill_reward_effective_health);
+        std::format_to(iter, "    Health is super:                     {}\n", rules.kill_rewards.kill_reward_health_super);
+        std::format_to(iter, "    Armor is super:                      {}\n", rules.kill_rewards.kill_reward_armor_super);
     }
 
     // Weapon stay exemptions
@@ -1444,7 +1447,7 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     );
 
     if (base || anyExemptionChanged) {
-        rf::console::print("  Weapon stay exemptions:\n");
+        std::format_to(iter, "  Weapon stay exemptions:\n");
         for (auto const& e : rules.weapon_stay_exemptions.exemptions) {
             bool unchanged = std::any_of(
                 b.weapon_stay_exemptions.exemptions.begin(),
@@ -1454,7 +1457,7 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
             );
             if (base || !unchanged) {
                 std::string weap_name_string = e.weapon_name + ":";
-                rf::console::print("    {:<20}                 {}\n", weap_name_string, e.exemption_enabled ? "exempt" : "not exempt"
+                std::format_to(iter, "    {:<20}                 {}\n", weap_name_string, e.exemption_enabled ? "exempt" : "not exempt"
                 );
             }
         }
@@ -1471,12 +1474,12 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     );
 
     if (base || anyReplacementChanged) {
-        rf::console::print("  Item replacements:\n");
+        std::format_to(iter, "  Item replacements:\n");
         for (auto const& [orig, repl] : rules.item_replacements) {
             auto it = b.item_replacements.find(orig);
             bool unchanged = (it != b.item_replacements.end() && it->second == repl);
             if (base || !unchanged) {
-                rf::console::print("    {:<20}     ->          {}\n", orig, repl);
+                std::format_to(iter, "    {:<20}     ->          {}\n", orig, repl);
             }
         }
     }
@@ -1492,13 +1495,13 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     );
 
     if (base || anyRespawnChanged) {
-        rf::console::print("  Item respawn time overrides:\n");
+        std::format_to(iter, "  Item respawn time overrides:\n");
         for (auto const& [item, ms] : rules.item_respawn_time_overrides) {
             auto it = b.item_respawn_time_overrides.find(item);
             bool unchanged = (it != b.item_respawn_time_overrides.end() && it->second == ms);
             if (base || !unchanged) {
                 std::string item_name_string = item + ":";
-                rf::console::print("    {:<20}                 {} ms\n", item_name_string, ms);
+                std::format_to(iter, "    {:<20}                 {} ms\n", item_name_string, ms);
             }
         }
     }
@@ -1506,9 +1509,9 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
     // force character
     if (base || rules.force_character.enabled != b.force_character.enabled ||
         (rules.force_character.enabled && rules.force_character.character_index != b.force_character.character_index)) {
-        rf::console::print("  Forced character:                      {}\n", rules.force_character.enabled);
+        std::format_to(iter, "  Forced character:                      {}\n", rules.force_character.enabled);
         if (rules.force_character.enabled) {
-            rf::console::print("    Character:                           {} ({})\n", rules.force_character.character_name, rules.force_character.character_index);
+            std::format_to(iter, "    Character:                           {} ({})\n", rules.force_character.character_name, rules.force_character.character_index);
         }
     }
 
@@ -1520,147 +1523,151 @@ void print_rules(const AlpineServerConfigRules& rules, bool base = true)
         (rules.critical_hits.enabled && rules.critical_hits.dynamic_scale &&
          rules.critical_hits.dynamic_damage_bonus_ceiling != b.critical_hits.dynamic_damage_bonus_ceiling)
         ) {
-        rf::console::print("  Critical hits:                         {}\n", rules.critical_hits.enabled);
+        std::format_to(iter, "  Critical hits:                         {}\n", rules.critical_hits.enabled);
         if (rules.critical_hits.enabled) {
-            rf::console::print("    Reward duration:                     {} ms\n", rules.critical_hits.reward_duration);
-            rf::console::print("    Base chance:                         {:.1f}%\n", rules.critical_hits.base_chance * 100.0f);
-            rf::console::print("    Dynamic scale:                       {}\n", rules.critical_hits.dynamic_scale);
+            std::format_to(iter, "    Reward duration:                     {} ms\n", rules.critical_hits.reward_duration);
+            std::format_to(iter, "    Base chance:                         {:.1f}%\n", rules.critical_hits.base_chance * 100.0f);
+            std::format_to(iter, "    Dynamic scale:                       {}\n", rules.critical_hits.dynamic_scale);
             if (rules.critical_hits.dynamic_scale) {
-                rf::console::print("      Dynamic damage bonus ceiling:      {}\n", rules.critical_hits.dynamic_damage_bonus_ceiling);
+                std::format_to(iter, "      Dynamic damage bonus ceiling:      {}\n", rules.critical_hits.dynamic_damage_bonus_ceiling);
             }
         }
     }
 
     // gungame
-    print_gungame(rules.gungame, b.gungame, base);
+    print_gungame(output, rules.gungame, b.gungame, base);
 }
 
-void print_rules_with_presets(const AlpineServerConfigRules& rules, const std::vector<std::string>& preset_paths, bool base)
+void print_rules_with_presets(std::string& output, const AlpineServerConfigRules& rules, const std::vector<std::string>& preset_paths, bool base)
 {
+    const auto iter = std::back_inserter(output);
     if (!preset_paths.empty()) {
-        rf::console::print("  Rules presets applied:\n");
+        std::format_to(iter, "  Rules presets applied:\n");
         for (const auto& preset : preset_paths)
-            rf::console::print("    {}\n", preset);
+            std::format_to(iter, "    {}\n", preset);
     }
-    print_rules(rules, base);
+    print_rules(output, rules, base);
 }
 
-void print_alpine_dedicated_server_config_info(bool verbose) {
+void print_alpine_dedicated_server_config_info(std::string& output, bool verbose, const bool password) {
     auto& netgame = rf::netgame;
     const auto& cfg = g_alpine_server_config;
 
-    rf::console::print("\n---- Core configuration ----\n");
-    rf::console::print("  Server port:                           {} (UDP)\n", netgame.server_addr.port);
-    rf::console::print("  Server name:                           {}\n", netgame.name);
-    rf::console::print("  Password:                              {}\n", netgame.password);
-    rf::console::print("  Rcon password:                         {}\n", rf::rcon_password);
-    rf::console::print("  Max players:                           {}\n", netgame.max_players);
-    rf::console::print("  Levels in rotation:                    {}\n", cfg.levels.size());
-    rf::console::print("  Dynamic rotation:                      {}\n", cfg.dynamic_rotation);
+    const auto iter = std::back_inserter(output);
+    std::format_to(iter, "\n---- Core configuration ----\n");
+    std::format_to(iter, "  Server port:                           {} (UDP)\n", netgame.server_addr.port);
+    std::format_to(iter, "  Server name:                           {}\n", netgame.name);
+    if (password) {
+        std::format_to(iter, "  Password:                              {}\n", netgame.password);
+        std::format_to(iter, "  Rcon password:                         {}\n", rf::rcon_password);
+    }
+    std::format_to(iter, "  Max players:                           {}\n", netgame.max_players);
+    std::format_to(iter, "  Levels in rotation:                    {}\n", cfg.levels.size());
+    std::format_to(iter, "  Dynamic rotation:                      {}\n", cfg.dynamic_rotation);
 
     if (rf::mod_param.found()) {
-        rf::console::print("  TC mod loaded:                         {}\n", rf::mod_param.get_arg());
-        rf::console::print("  Clients must match TC mod:             {}\n", cfg.require_client_mod);
-    }    
+        std::format_to(iter, "  TC mod loaded:                         {}\n", rf::mod_param.get_arg());
+        std::format_to(iter, "  Clients must match TC mod:             {}\n", cfg.require_client_mod);
+    }
 
     // minimal server config printing
     if (!verbose) {
-        rf::console::print("\n----> Enter sv_printconfig to print verbose server config.\n\n");
+        std::format_to(iter, "\n----> Enter sv_printconfig to print verbose server config.\n\n");
         return;
     }
 
-    rf::console::print("  Gaussian bullet spread:                {}\n", cfg.gaussian_spread);
-    rf::console::print("  End of round stats message:            {}\n", cfg.stats_message_enabled);
-    rf::console::print("  Allow fullbright meshes:               {}\n", cfg.allow_fullbright_meshes);
-    rf::console::print("  Allow disable screenshake:             {}\n", cfg.allow_disable_screenshake);
-    rf::console::print("  Allow lightmap only mode:              {}\n", cfg.allow_lightmaps_only);
-    rf::console::print("  Allow disable muzzle flash:            {}\n", cfg.allow_disable_muzzle_flash);
-    rf::console::print("  Allow disable 240 FPS cap:             {}\n", cfg.allow_unlimited_fps);
-    rf::console::print("  SP-style damage calculation:           {}\n", cfg.use_sp_damage_calculation);
+    std::format_to(iter, "  Gaussian bullet spread:                {}\n", cfg.gaussian_spread);
+    std::format_to(iter, "  End of round stats message:            {}\n", cfg.stats_message_enabled);
+    std::format_to(iter, "  Allow fullbright meshes:               {}\n", cfg.allow_fullbright_meshes);
+    std::format_to(iter, "  Allow disable screenshake:             {}\n", cfg.allow_disable_screenshake);
+    std::format_to(iter, "  Allow lightmap only mode:              {}\n", cfg.allow_lightmaps_only);
+    std::format_to(iter, "  Allow disable muzzle flash:            {}\n", cfg.allow_disable_muzzle_flash);
+    std::format_to(iter, "  Allow disable 240 FPS cap:             {}\n", cfg.allow_unlimited_fps);
+    std::format_to(iter, "  SP-style damage calculation:           {}\n", cfg.use_sp_damage_calculation);
 
     // inactivity
-    rf::console::print("  Kick inactive players:                 {}\n", cfg.inactivity_config.enabled);
+    std::format_to(iter, "  Kick inactive players:                 {}\n", cfg.inactivity_config.enabled);
     if (cfg.inactivity_config.enabled) {
-        rf::console::print("    New player grace period:             {} sec\n", cfg.inactivity_config.new_player_grace_ms / 1000.0f);
-        rf::console::print("    Allowed inactivity time:             {} sec\n", cfg.inactivity_config.allowed_inactive_ms / 1000.0f);
-        rf::console::print("    Warning duration:                    {} sec\n", cfg.inactivity_config.warning_duration_ms / 1000.0f);
-        rf::console::print("    Kick message:                        {}\n", cfg.inactivity_config.kick_message);
+        std::format_to(iter, "    New player grace period:             {} sec\n", cfg.inactivity_config.new_player_grace_ms / 1000.0f);
+        std::format_to(iter, "    Allowed inactivity time:             {} sec\n", cfg.inactivity_config.allowed_inactive_ms / 1000.0f);
+        std::format_to(iter, "    Warning duration:                    {} sec\n", cfg.inactivity_config.warning_duration_ms / 1000.0f);
+        std::format_to(iter, "    Kick message:                        {}\n", cfg.inactivity_config.kick_message);
     }
 
     // click limiter
-    rf::console::print("  Click limiter:                         {}\n", cfg.click_limiter_config.enabled);
+    std::format_to(iter, "  Click limiter:                         {}\n", cfg.click_limiter_config.enabled);
     if (cfg.click_limiter_config.enabled) {
-        rf::console::print("    Cooldown:                            {} ms\n", cfg.click_limiter_config.cooldown);
+        std::format_to(iter, "    Cooldown:                            {} ms\n", cfg.click_limiter_config.cooldown);
     }
 
     // damage notifications
-    rf::console::print("  Damage notifications:                  {}\n", cfg.damage_notification_config.enabled);
+    std::format_to(iter, "  Damage notifications:                  {}\n", cfg.damage_notification_config.enabled);
     if (cfg.damage_notification_config.enabled) {
-        rf::console::print("    Legacy client compatibility:         {}\n", cfg.damage_notification_config.support_legacy_clients);
+        std::format_to(iter, "    Legacy client compatibility:         {}\n", cfg.damage_notification_config.support_legacy_clients);
     }
 
     // alpine restrict
-    rf::console::print("  Advertise Alpine:                      {}\n", cfg.alpine_restricted_config.advertise_alpine);
-    rf::console::print("  Reject incompatible clients:           {}\n", cfg.alpine_restricted_config.reject_incompatible_clients);
-    rf::console::print("  Clients require Alpine:                {}\n", cfg.alpine_restricted_config.clients_require_alpine);
+    std::format_to(iter, "  Advertise Alpine:                      {}\n", cfg.alpine_restricted_config.advertise_alpine);
+    std::format_to(iter, "  Reject incompatible clients:           {}\n", cfg.alpine_restricted_config.reject_incompatible_clients);
+    std::format_to(iter, "  Clients require Alpine:                {}\n", cfg.alpine_restricted_config.clients_require_alpine);
     if (cfg.alpine_restricted_config.clients_require_alpine) {
-        rf::console::print("    Reject non-Alpine clients:           {}\n", cfg.alpine_restricted_config.reject_non_alpine_clients);
-        rf::console::print("    Enforce min server version:          {}\n", cfg.alpine_restricted_config.alpine_server_version_enforce_min);
-        rf::console::print("    Require release build:               {}\n", cfg.alpine_restricted_config.alpine_require_release_build);
-        rf::console::print("    Only welcome Alpine players:         {}\n", cfg.alpine_restricted_config.only_welcome_alpine);
-        rf::console::print("    No player collide:                   {}\n", cfg.alpine_restricted_config.no_player_collide);
-        rf::console::print("    Location pinging:                    {}\n", cfg.alpine_restricted_config.location_pinging);
+        std::format_to(iter, "    Reject non-Alpine clients:           {}\n", cfg.alpine_restricted_config.reject_non_alpine_clients);
+        std::format_to(iter, "    Enforce min server version:          {}\n", cfg.alpine_restricted_config.alpine_server_version_enforce_min);
+        std::format_to(iter, "    Require release build:               {}\n", cfg.alpine_restricted_config.alpine_require_release_build);
+        std::format_to(iter, "    Only welcome Alpine players:         {}\n", cfg.alpine_restricted_config.only_welcome_alpine);
+        std::format_to(iter, "    No player collide:                   {}\n", cfg.alpine_restricted_config.no_player_collide);
+        std::format_to(iter, "    Location pinging:                    {}\n", cfg.alpine_restricted_config.location_pinging);
 
         // match mode
         auto& vm = cfg.alpine_restricted_config.vote_match;
-        rf::console::print("    Match mode:                          {}\n", vm.enabled);
+        std::format_to(iter, "    Match mode:                          {}\n", vm.enabled);
         if (vm.enabled) {
-            rf::console::print("      Vote ignores nonvoters:            {}\n", vm.ignore_nonvoters);
-            rf::console::print("      Vote time limit:                   {} sec\n", vm.time_limit_seconds);
+            std::format_to(iter, "      Vote ignores nonvoters:            {}\n", vm.ignore_nonvoters);
+            std::format_to(iter, "      Vote time limit:                   {} sec\n", vm.time_limit_seconds);
             auto& ot = cfg.alpine_restricted_config.overtime;
-            rf::console::print("      Overtime:                          {}\n", ot.enabled);
+            std::format_to(iter, "      Overtime:                          {}\n", ot.enabled);
             if (ot.enabled) {
-                rf::console::print("        Additional time:                 {}\n", ot.additional_time);
-                rf::console::print("        Tie when flag stolen:            {}\n", ot.consider_tie_if_flag_stolen);
+                std::format_to(iter, "        Additional time:                 {}\n", ot.additional_time);
+                std::format_to(iter, "        Tie when flag stolen:            {}\n", ot.consider_tie_if_flag_stolen);
             }
         }
     }
 
     // votes
     auto print_vote = [&](std::string name, const VoteConfig& v) {
-        rf::console::print("  {}                 {}\n", name, v.enabled);
+        std::format_to(iter, "  {}                 {}\n", name, v.enabled);
         if (v.enabled) {
-            rf::console::print("    Ignore nonvoters:                    {}\n", v.ignore_nonvoters);
-            rf::console::print("    Time limit:                          {} sec\n", v.time_limit_seconds);
+            std::format_to(iter, "    Ignore nonvoters:                    {}\n", v.ignore_nonvoters);
+            std::format_to(iter, "    Time limit:                          {} sec\n", v.time_limit_seconds);
         }
     };
 
-    print_vote("Vote kick enabled:    ", cfg.vote_kick);
-    print_vote("Vote level enabled:   ", cfg.vote_level);
-    print_vote("Vote gametype enabled:", cfg.vote_gametype);
-    print_vote("Vote extend enabled:  ", cfg.vote_extend);
-    print_vote("Vote restart enabled: ", cfg.vote_restart);
-    print_vote("Vote next enabled:    ", cfg.vote_next);
-    print_vote("Vote random enabled:  ", cfg.vote_rand);
-    print_vote("Vote previous enabled:", cfg.vote_previous);
+    print_vote("Vote kick:    ", cfg.vote_kick);
+    print_vote("Vote level:   ", cfg.vote_level);
+    print_vote("Vote gametype:", cfg.vote_gametype);
+    print_vote("Vote extend:  ", cfg.vote_extend);
+    print_vote("Vote restart: ", cfg.vote_restart);
+    print_vote("Vote next:    ", cfg.vote_next);
+    print_vote("Vote random:  ", cfg.vote_rand);
+    print_vote("Vote previous:", cfg.vote_previous);
 
     
     if (!cfg.rules_preset_aliases.empty()) {
-        rf::console::print("\n---- Rules preset alias mappings ----\n");
+        std::format_to(iter, "\n---- Rules preset alias mappings ----\n");
         for (const auto& [alias, path] : cfg.rules_preset_aliases)
-            rf::console::print("  {} -> {}\n", alias, path);
+            std::format_to(iter, "  {} -> {}\n", alias, path);
     }
 
-    rf::console::print("\n---- Base rules ----\n");
-    print_rules_with_presets(cfg.base_rules, cfg.base_rules_preset_paths, true);
+    std::format_to(iter, "\n---- Base rules ----\n");
+    print_rules_with_presets(output, cfg.base_rules, cfg.base_rules_preset_paths, true);
 
-    rf::console::print("\n---- Level rotation ----\n");
+    std::format_to(iter, "\n---- Level rotation ----\n");
     for (size_t i = 0; i < cfg.levels.size(); ++i) {
         const auto& lvl = cfg.levels[i];
-        rf::console::print("{} ({})\n", lvl.level_filename, i);
-        print_rules_with_presets(lvl.rule_overrides, lvl.applied_rules_preset_paths, false);
+        std::format_to(iter, "{} ({})\n", lvl.level_filename, i);
+        print_rules_with_presets(output, lvl.rule_overrides, lvl.applied_rules_preset_paths, false);
     }
-    rf::console::print("\n");
+    std::format_to(iter, "\n");
 }
 
 void initialize_core_alpine_dedicated_server_settings(rf::NetGameInfo& netgame, const AlpineServerConfig& cfg, bool on_launch) {
@@ -1737,7 +1744,9 @@ void load_and_print_alpine_dedicated_server_config(std::string ads_config_name, 
         rebuild_rotation_from_cfg();
     }
 
-    print_alpine_dedicated_server_config_info(!g_ads_minimal_server_info);
+    std::string output{};
+    print_alpine_dedicated_server_config_info(output, !g_ads_minimal_server_info, true);
+    rf::console::print("{}", output.c_str());
 }
 
 bool apply_game_type_for_current_level() {
@@ -1908,7 +1917,9 @@ ConsoleCommand2 print_server_config_cmd{
     "sv_printconfig",
     []() {
         if (g_dedicated_launched_from_ads) {
-            print_alpine_dedicated_server_config_info(true);
+            std::string output{};
+            print_alpine_dedicated_server_config_info(output, true, true);
+            rf::console::print("{}", output.c_str());
         }
         else {
             rf::console::print("This command is only available for Alpine Faction dedicated servers launched with the -ads switch.\n");
@@ -1963,16 +1974,22 @@ ConsoleCommand2 print_level_rules_cmd{
                         rf::console::print("  (manually loaded {} is using rules preset '{}')\n\n", rf::level_filename_to_load, *g_manual_rules_override->preset_alias);
                     else
                         rf::console::print("  (manually loaded {} has a manual rules override)\n\n", rf::level_filename_to_load);
-                    print_rules_with_presets(g_manual_rules_override->rules, g_manual_rules_override->applied_preset_paths, true);
+                    std::string output{};
+                    print_rules_with_presets(output, g_manual_rules_override->rules, g_manual_rules_override->applied_preset_paths, true);
+                    rf::console::print("{}", output.c_str());
                 }
                 else {
                     rf::console::print("  (manually loaded {} is using base rules)\n\n", rf::level_filename_to_load);
-                    print_rules_with_presets(cfg.base_rules, cfg.base_rules_preset_paths, true);
+                    std::string output{};
+                    print_rules_with_presets(output, cfg.base_rules, cfg.base_rules_preset_paths, true);
+                    rf::console::print("{}", output.c_str());
                 }
             }
             else {
                 rf::console::print("\n---- Rules for level {} (index {}) ----\n", entry.level_filename, idx);
-                print_rules_with_presets(entry.rule_overrides, entry.applied_rules_preset_paths, true);
+                std::string output{};
+                print_rules_with_presets(output, entry.rule_overrides, entry.applied_rules_preset_paths, true);
+                rf::console::print("{}", output.c_str());
             }
         }
     },

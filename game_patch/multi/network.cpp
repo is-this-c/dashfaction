@@ -209,7 +209,8 @@ enum packet_type : uint8_t {
     af_just_died_info      = 0x59,
     af_server_info         = 0x5A,
     af_spectate_start      = 0x5B,
-    af_spectate_notify     = 0x5C
+    af_spectate_notify     = 0x5C,
+    af_server_msg                 = 0x5D
 };
 
 // client -> server
@@ -292,7 +293,8 @@ std::array g_client_side_packet_whitelist{
     af_koth_hill_captured,
     af_just_died_info,
     af_server_info,
-    af_spectate_notify
+    af_spectate_notify,
+    af_server_msg
 };
 // clang-format on
 
@@ -1698,6 +1700,7 @@ FunHook<void()> multi_stop_hook{
     []() {
         g_af_server_info.reset(); // Clear server info when leaving
         g_local_player_spectators.clear();
+        g_remote_server_cfg_popup.reset();
         set_local_pre_match_active(false); // clear pre-match state when leaving
         reset_local_pending_game_type(); // clear pending game type when leaving
         if (rf::local_player) {
