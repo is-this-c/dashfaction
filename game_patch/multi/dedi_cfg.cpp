@@ -1356,7 +1356,7 @@ void print_rules(std::string& output, const AlpineServerConfigRules& rules, bool
                 }
             );
             if (base || !unchanged) {
-                std::format_to(iter, "    {:<20}                {}\n", e.weapon_name + ':', e.enabled);
+                std::format_to(iter, "    {:<20}                 {}\n", e.weapon_name + ':', e.enabled);
                 std::format_to(iter, "      Extra ammo:                        {}\n", e.reserve_ammo);
             }
         }
