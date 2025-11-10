@@ -1437,7 +1437,7 @@ void af_process_server_msg_packet(
 
     if (msg_packet.type == static_cast<uint8_t>(AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG)) {
         const char* msg = static_cast<const char*>(data) + sizeof(msg_packet);
-        g_remote_server_cfg_popup.append_lines(
+        g_remote_server_cfg_popup.add_content(
             std::string_view{msg, len - sizeof(msg_packet)}
         );
     }

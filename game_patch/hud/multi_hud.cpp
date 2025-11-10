@@ -978,25 +978,25 @@ void RemoteServerCfgPopup::reset() {
     *this = RemoteServerCfgPopup{};
 }
 
-void RemoteServerCfgPopup::append_lines(const std::string_view lines) {
+void RemoteServerCfgPopup::add_content(const std::string_view content) {
     size_t i = 0;
-    const size_t len = lines.size();
+    const size_t len = content.size();
 
     while (i < len) {
-        const size_t new_line = lines.find('\n', i);
+        const size_t new_line = content.find('\n', i);
         const bool complete = new_line != std::string_view::npos;
         std::string_view fragment = complete
-            ? lines.substr(i, new_line - i)
-            : lines.substr(i);
+            ? content.substr(i, new_line - i)
+            : content.substr(i);
 
         if (!m_partial_line.empty() && !m_lines.empty()) {
             m_lines.pop_back();
         }
 
         m_partial_line += fragment;
-        append_line(m_partial_line);
+        add_line(m_partial_line);
 
-        if (complete) {
+        if (complete && !m_partial_line.empty()) {
             m_partial_line.clear();
         }
 
@@ -1004,7 +1004,7 @@ void RemoteServerCfgPopup::append_lines(const std::string_view lines) {
     }
 }
 
-void RemoteServerCfgPopup::append_line(const std::string_view line) {
+void RemoteServerCfgPopup::add_line(const std::string_view line) {
     const size_t colon = line.find(':');
     if (colon != std::string::npos) {
         const std::string key{line.substr(0, colon + 1)};

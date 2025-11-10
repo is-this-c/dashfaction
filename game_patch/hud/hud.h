@@ -34,13 +34,13 @@ void build_local_player_spectators_strings();
 inline struct RemoteServerCfgPopup {
 public:
     void reset();
-    void append_lines(std::string_view data);
+    void add_content(std::string_view content);
     bool is_active();
     void toggle();
     void render();
 
 private:
-    void append_line(std::string_view line);
+    void add_line(std::string_view line);
 
     using Line = std::variant<std::string, std::pair<std::string, std::string>>;
     std::vector<Line> m_lines{};
