@@ -1006,7 +1006,9 @@ void RemoteServerCfgPopup::add_content(const std::string_view content) {
 
 void RemoteServerCfgPopup::add_line(const std::string_view line) {
     const size_t colon = line.find(':');
-    if (colon != std::string::npos) {
+    if (colon != std::string::npos
+        && line.size() > colon + 1
+        && line[colon + 1] != '/') {
         const std::string key{line.substr(0, colon + 1)};
         const std::string value{ltrim(line.substr(colon + 1))};
         m_lines.emplace_back(std::make_pair(std::move(key), std::move(value)));
