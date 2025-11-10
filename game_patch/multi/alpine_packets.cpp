@@ -1413,7 +1413,7 @@ void af_send_server_cfg(rf::Player* player) {
     };
 
     constexpr int chunk_size = rf::max_packet_size - sizeof(af_server_msg_packet);
-    for (const auto chunk: output | std::views::chunk(chunk_size)) {
+    for (const auto chunk : output | std::views::chunk(chunk_size)) {
         send_msg(std::string_view{chunk.begin(), chunk.end()});
     }
 }

@@ -236,7 +236,7 @@ CodeInjection control_config_init_patch{
             ccp,
             "Show a server's config",
             false,
-            rf::KEY_F2,
+            rf::KEY_F5,
             -1,
             -1,
             rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG
