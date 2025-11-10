@@ -210,7 +210,7 @@ enum packet_type : uint8_t {
     af_server_info         = 0x5A,
     af_spectate_start      = 0x5B,
     af_spectate_notify     = 0x5C,
-    af_server_msg                 = 0x5D
+    af_server_msg          = 0x5D
 };
 
 // client -> server

@@ -40,7 +40,7 @@ public:
     void render();
 
 private:
-    void append_line(const std::string_view line);
+    void append_line(std::string_view line);
 
     using Line = std::variant<std::string, std::pair<std::string, std::string>>;
     std::vector<Line> m_lines{};
