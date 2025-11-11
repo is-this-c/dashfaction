@@ -663,11 +663,12 @@ struct AlpineServerConfig
     VoteConfig vote_rand;
     VoteConfig vote_previous;
 
-
     AlpineServerConfigRules base_rules;
     std::vector<std::string> base_rules_preset_paths;
     std::map<std::string, std::string> rules_preset_aliases;
     std::vector<AlpineServerConfigLevelEntry> levels;
+
+    bool signal_cfg_changed = false;
 
     // =============================================
 

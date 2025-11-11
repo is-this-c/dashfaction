@@ -1077,6 +1077,14 @@ static void build_af_server_info_packet(af_server_info_packet& pkt)
         af |= af_server_info_flags::SIF_LOCATION_PINGING;
     if (g_alpine_server_config_active_rules.spawn_delay.enabled)
         af |= af_server_info_flags::SIF_DELAYED_SPAWNS;
+    if (g_alpine_server_config.signal_cfg_changed) {
+        af |= af_server_info_flags::SIF_SERVER_CFG_CHANGED;
+        g_alpine_server_config.signal_cfg_changed = false;
+        for (const auto& player : SinglyLinkedList{rf::player_list}) {
+            auto& pdata = get_player_additional_data(&player);
+            pdata.remote_server_cfg_sent = false;
+        }
+    }
     pkt.af_flags = af;
 
     // game_type
@@ -1234,6 +1242,10 @@ static void af_process_server_info_packet(const void* data, size_t len, const rf
     server_info.gaussian_spread = (pkt.af_flags & af_server_info_flags::SIF_GAUSSIAN_SPREAD) != 0;
     server_info.location_pinging = (pkt.af_flags & af_server_info_flags::SIF_LOCATION_PINGING) != 0;
     server_info.delayed_spawns = (pkt.af_flags & af_server_info_flags::SIF_DELAYED_SPAWNS) != 0;
+
+    if ((pkt.af_flags & af_server_info_flags::SIF_SERVER_CFG_CHANGED) != 0) {
+        g_remote_server_cfg_popup.set_cfg_changed();
+    }
 
     server_info.semi_auto_cooldown = static_cast<int>(pkt.semi_auto_cooldown);
 

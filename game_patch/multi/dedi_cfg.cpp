@@ -1726,12 +1726,14 @@ void rebuild_rotation_from_cfg()
 
 void load_and_print_alpine_dedicated_server_config(std::string ads_config_name, bool on_launch) {
     auto& netgame = rf::netgame;
-    const auto& cfg = g_alpine_server_config;
+    auto& cfg = g_alpine_server_config;
 
     // parse toml file and update values
     // on launch does this before tracker registration
-    if (!on_launch)
+    if (!on_launch) {
         load_ads_server_config(ads_config_name);
+        cfg.signal_cfg_changed = true;
+    }
 
     initialize_core_alpine_dedicated_server_settings(netgame, cfg, on_launch);
 

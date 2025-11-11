@@ -39,12 +39,17 @@ public:
     void toggle();
     void render();
 
+    void set_cfg_changed() {
+        m_cfg_changed = true;
+    }
+
 private:
     void add_line(std::string_view line);
 
     using Line = std::variant<std::string, std::pair<std::string, std::string>>;
     std::vector<Line> m_lines{};
     std::string m_partial_line{};
+    bool m_cfg_changed = false;
     bool m_is_active = false;
     struct {
         float current = 0.f;

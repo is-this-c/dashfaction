@@ -32,7 +32,7 @@ enum class af_packet_type : uint8_t
     af_server_info = 0x5A,              // Alpine 1.2
     af_spectate_start = 0x5B,           // Alpine 1.2
     af_spectate_notify = 0x5C,          // Alpine 1.2
-    af_server_msg = 0x5D,                      // Alpine 1.2
+    af_server_msg = 0x5D,               // Alpine 1.2
 };
 
 struct af_ping_location_req_packet
@@ -146,31 +146,31 @@ struct af_just_died_info_packet
     uint16_t spawn_delay;
 };
 
-enum af_server_info_flags : uint32_t
-{
-    SIF_NONE = 0x0,
-    SIF_POSITION_SAVING = 0x1,
-    SIF_UNUSED = 0x2,
-    SIF_ALLOW_FULLBRIGHT_MESHES = 0x4,
-    SIF_ALLOW_LIGHTMAPS_ONLY = 0x8,
-    SIF_ALLOW_NO_SCREENSHAKE = 0x10,
-    SIF_NO_PLAYER_COLLIDE = 0x20,
-    SIF_ALLOW_NO_MUZZLE_FLASH_LIGHT = 0x40,
-    SIF_CLICK_LIMITER = 0x80,
-    SIF_ALLOW_UNLIMITED_FPS = 0x100,
-    SIF_GAUSSIAN_SPREAD = 0x200,
-    SIF_LOCATION_PINGING = 0x400,
-    SIF_DELAYED_SPAWNS = 0x800,
+enum af_server_info_flags : uint32_t {
+    SIF_NONE = 0,
+    SIF_POSITION_SAVING = 1 << 0,
+    SIF_UNUSED = 1 << 1,
+    SIF_ALLOW_FULLBRIGHT_MESHES = 1 << 2,
+    SIF_ALLOW_LIGHTMAPS_ONLY = 1 << 3,
+    SIF_ALLOW_NO_SCREENSHAKE = 1 << 4,
+    SIF_NO_PLAYER_COLLIDE = 1 << 5,
+    SIF_ALLOW_NO_MUZZLE_FLASH_LIGHT = 1 << 6,
+    SIF_CLICK_LIMITER = 1 << 7,
+    SIF_ALLOW_UNLIMITED_FPS = 1 << 8,
+    SIF_GAUSSIAN_SPREAD = 1 << 9,
+    SIF_LOCATION_PINGING = 1 << 10,
+    SIF_DELAYED_SPAWNS = 1 << 11,
+    SIF_SERVER_CFG_CHANGED = 1 << 12,
 };
 
-enum rf_server_info_flags : uint8_t // subset of rf::NetGameFlags
-{
-    RFSIF_NONE = 0x0,
-    RFSIF_WEAPON_STAY = 0x1,
-    RFSIF_FORCE_RESPAWN = 0x2,
-    RFSIF_TEAM_DAMAGE = 0x4,
-    RFSIF_FALL_DAMAGE = 0x8,
-    RFSIF_BALANCE_TEAMS = 0x10,
+// Subset of `rf::NetGameFlags`.
+enum rf_server_info_flags : uint8_t {
+    RFSIF_NONE = 0,
+    RFSIF_WEAPON_STAY = 1 << 0,
+    RFSIF_FORCE_RESPAWN = 1 << 1,
+    RFSIF_TEAM_DAMAGE = 1 << 2,
+    RFSIF_FALL_DAMAGE = 1 << 3,
+    RFSIF_BALANCE_TEAMS = 1 << 4,
 };
 
 struct af_server_info_packet

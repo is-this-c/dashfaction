@@ -1022,6 +1022,9 @@ bool RemoteServerCfgPopup::is_active() {
 }
 
 void RemoteServerCfgPopup::toggle() {
+    if (!m_is_active && m_cfg_changed) {
+        reset();
+    }
     m_is_active = !m_is_active;
     if (m_is_active && m_lines.empty()) {
         af_send_server_cfg_request();
@@ -1057,14 +1060,11 @@ void RemoteServerCfgPopup::render() {
     int h = rf::gr::clip_height() - (y * 2);
 
     const int font_id = hud_get_default_font();
-    const int header_font_id = font_id;
+    const int label_font_id = font_id;
     const int line_height = rf::gr::get_font_height(font_id);
 
     int clip_x = 0, clip_y = 0, clip_w = 0, clip_h = 0;
     rf::gr::get_clip(&clip_x, &clip_y, &clip_w, &clip_h);
-
-    rf::gr::set_color(0, 0, 0, 128);
-    rf::gr::rect(x, y, w, h);
 
     const float scroll_step = 40.f;
     int mouse_dx = 0, mouse_dy = 0, mouse_dz = 0;
@@ -1082,9 +1082,9 @@ void RemoteServerCfgPopup::render() {
     }
 
     const int total_height = m_lines.size() * line_height;
-    const int header_h = 10 + rf::gr::get_font_height(header_font_id) + 10;
+    const int label_h = 10 + rf::gr::get_font_height(label_font_id) + 10;
     const float max_scroll = static_cast<float>(
-        std::max(0, total_height - h + header_h + 20)
+        std::max(0, total_height - h + (label_h * 2) + (10 * 2))
     );
     m_scroll.target = std::clamp(m_scroll.target, 0.f, max_scroll);
 
@@ -1114,22 +1114,26 @@ void RemoteServerCfgPopup::render() {
         );
     }
 
+    rf::gr::set_color(0, 0, 0, 128);
+    // rf::gr::rect(x, y + label_h, w, h - (label_h * 2));
+    rf::gr::rect(x, y, w, h);
+
     // rf::gr::set_color(100, 100, 100, 30);
-    // rf::gr::rect(x, y, w, header_h);
+    // rf::gr::rect(x, y, w, label_h);
     rf::gr::set_color(255, 255, 255, 255);
     // rf::gr::set_color(255, 200, 100, 255);
     rf::gr::string_aligned(
         rf::gr::ALIGN_CENTER,
         x + (w / 2),
         y + 10,
-        "REMOTE SERVER CONFIG",
-        header_font_id
+        m_cfg_changed ? "REMOTE SERVER CONFIG | OUTDATED" : "REMOTE SERVER CONFIG",
+        label_font_id
     );
 
     const int content_x = x;
-    const int content_y = y + header_h;
+    const int content_y = y + label_h;
     const int content_w = w;
-    const int content_h = h - header_h;
+    const int content_h = h - label_h - label_h;
     rf::gr::set_clip(0, content_y, rf::gr::clip_width(), content_h);
 
     int line_y = std::lround(10.f - m_scroll.current);
@@ -1205,6 +1209,18 @@ void RemoteServerCfgPopup::render() {
     }
 
     rf::gr::set_clip(clip_x, clip_y, clip_w, clip_h);
+
+    const rf::String key = get_action_bind_name(
+        get_af_control(rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG)
+    );
+    rf::gr::set_color(255, 255, 255, 255);
+    rf::gr::string_aligned(
+        rf::gr::ALIGN_CENTER,
+        x + (w / 2),
+        y + h - label_h + 10,
+        std::format("PRESS {} TO CLOSE", key).c_str(),
+        label_font_id
+    );
 }
 
 
@@ -1658,7 +1674,7 @@ ConsoleCommand2 ui_remote_server_cfg_cmd{
             g_remote_server_cfg_popup.toggle();
         }
     },
-    "Toggle display of a server's config",
+    "Toggle display of a remote server's config",
 };
 
 

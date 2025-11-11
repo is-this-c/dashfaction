@@ -195,8 +195,7 @@ void alpine_control_config_add_item(rf::ControlConfig* config, const char* name,
 // add new controls after all stock ones
 CodeInjection control_config_init_patch{
     0x0043D329,
-    [](auto& regs) {
-
+    [] (auto& regs) {
         rf::ControlConfig* ccp = regs.esi;
 
         // set the starting index for Alpine controls
@@ -204,43 +203,36 @@ CodeInjection control_config_init_patch{
         // overall limit on number of controls (stock + weapons + alpine) is 128
         if (starting_alpine_control_index == -1) {
             starting_alpine_control_index = ccp->num_bindings;
-        }        
+        }
 
-        alpine_control_config_add_item(
-            ccp, "Toggle headlamp", 0, rf::KEY_F, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_FLASHLIGHT);
-        alpine_control_config_add_item(
-            ccp, "Skip cutscene", 0, rf::KEY_L, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SKIP_CUTSCENE);
-        alpine_control_config_add_item(
-            ccp, "Respawn", 0, rf::KEY_K, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SELF_KILL);
-        alpine_control_config_add_item(
-            ccp, "Vote yes", 0, rf::KEY_F1, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES);
-        alpine_control_config_add_item(
-            ccp, "Vote no", 0, rf::KEY_F2, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO);
-        alpine_control_config_add_item(
-            ccp, "Ready for match", 0, rf::KEY_F3, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_READY);
-        alpine_control_config_add_item(
-            ccp, "Drop flag", 0, rf::KEY_G, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_DROP_FLAG);
-        alpine_control_config_add_item(
-            ccp, "Radio message menu", 0, rf::KEY_V, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU);
-        alpine_control_config_add_item(
-            ccp, "Taunt menu", 0, rf::KEY_B, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU);
-        alpine_control_config_add_item(
-            ccp, "Command menu", 0, rf::KEY_N, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU);
+        alpine_control_config_add_item(ccp, "Toggle headlamp", 0, rf::KEY_F, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_FLASHLIGHT);
+        alpine_control_config_add_item(ccp, "Skip cutscene", 0, rf::KEY_L, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_SKIP_CUTSCENE);
+        alpine_control_config_add_item(ccp, "Respawn", 0, rf::KEY_K, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_SELF_KILL);
+        alpine_control_config_add_item(ccp, "Vote yes", 0, rf::KEY_F1, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_VOTE_YES);
+        alpine_control_config_add_item(ccp, "Vote no", 0, rf::KEY_F2, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_VOTE_NO);
+        alpine_control_config_add_item(ccp, "Ready for match", 0, rf::KEY_F3, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_READY);
+        alpine_control_config_add_item(ccp, "Drop flag", 0, rf::KEY_G, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_DROP_FLAG);
+        alpine_control_config_add_item(ccp, "Radio message menu", 0, rf::KEY_V, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_CHAT_MENU);
+        alpine_control_config_add_item(ccp, "Taunt menu", 0, rf::KEY_B, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_TAUNT_MENU);
+        alpine_control_config_add_item(ccp, "Command menu", 0, rf::KEY_N, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_COMMAND_MENU);
         alpine_control_config_add_item( // Mouse 3
             ccp, "Ping location", 0, -1, -1, 2, rf::AlpineControlConfigAction::AF_ACTION_PING_LOCATION);
-        alpine_control_config_add_item(
-            ccp, "Spectate mode menu", 0, rf::KEY_COMMA, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU);
-        alpine_control_config_add_item(
-            ccp, "Suppress autoswitch", 0, -1, -1, -1, rf::AlpineControlConfigAction::AF_ACTION_NO_AUTOSWITCH);
-        alpine_control_config_add_item(
-            ccp,
-            "Show a server's config",
-            false,
-            rf::KEY_F5,
-            -1,
-            -1,
-            rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG
-        );
+        alpine_control_config_add_item(ccp, "Spectate mode menu", 0, rf::KEY_COMMA, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU);
+        alpine_control_config_add_item(ccp, "Suppress autoswitch", 0, -1, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_NO_AUTOSWITCH);
+        alpine_control_config_add_item(ccp, "Show a server's config", false, rf::KEY_F5, -1, -1,
+                                       rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG);
     },
 };
 
