@@ -148,29 +148,29 @@ struct af_just_died_info_packet
 
 enum af_server_info_flags : uint32_t {
     SIF_NONE = 0,
-    SIF_POSITION_SAVING = 1 << 0,
-    SIF_UNUSED = 1 << 1,
-    SIF_ALLOW_FULLBRIGHT_MESHES = 1 << 2,
-    SIF_ALLOW_LIGHTMAPS_ONLY = 1 << 3,
-    SIF_ALLOW_NO_SCREENSHAKE = 1 << 4,
-    SIF_NO_PLAYER_COLLIDE = 1 << 5,
-    SIF_ALLOW_NO_MUZZLE_FLASH_LIGHT = 1 << 6,
-    SIF_CLICK_LIMITER = 1 << 7,
-    SIF_ALLOW_UNLIMITED_FPS = 1 << 8,
-    SIF_GAUSSIAN_SPREAD = 1 << 9,
-    SIF_LOCATION_PINGING = 1 << 10,
-    SIF_DELAYED_SPAWNS = 1 << 11,
-    SIF_SERVER_CFG_CHANGED = 1 << 12,
+    SIF_POSITION_SAVING = 1u << 0,
+    SIF_UNUSED = 1u << 1,
+    SIF_ALLOW_FULLBRIGHT_MESHES = 1u << 2,
+    SIF_ALLOW_LIGHTMAPS_ONLY = 1u << 3,
+    SIF_ALLOW_NO_SCREENSHAKE = 1u << 4,
+    SIF_NO_PLAYER_COLLIDE = 1u << 5,
+    SIF_ALLOW_NO_MUZZLE_FLASH_LIGHT = 1u << 6,
+    SIF_CLICK_LIMITER = 1u << 7,
+    SIF_ALLOW_UNLIMITED_FPS = 1u << 8,
+    SIF_GAUSSIAN_SPREAD = 1u << 9,
+    SIF_LOCATION_PINGING = 1u << 10,
+    SIF_DELAYED_SPAWNS = 1u << 11,
+    SIF_SERVER_CFG_CHANGED = 1u << 12,
 };
 
 // Subset of `rf::NetGameFlags`.
 enum rf_server_info_flags : uint8_t {
     RFSIF_NONE = 0,
-    RFSIF_WEAPON_STAY = 1 << 0,
-    RFSIF_FORCE_RESPAWN = 1 << 1,
-    RFSIF_TEAM_DAMAGE = 1 << 2,
-    RFSIF_FALL_DAMAGE = 1 << 3,
-    RFSIF_BALANCE_TEAMS = 1 << 4,
+    RFSIF_WEAPON_STAY = 1u << 0,
+    RFSIF_FORCE_RESPAWN = 1u << 1,
+    RFSIF_TEAM_DAMAGE = 1u << 2,
+    RFSIF_FALL_DAMAGE = 1u << 3,
+    RFSIF_BALANCE_TEAMS = 1u << 4,
 };
 
 struct af_server_info_packet

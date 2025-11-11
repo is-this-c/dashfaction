@@ -74,7 +74,7 @@ void multi_spectate_set_target_player(rf::Player* player)
         g_old_target_camera = nullptr;
 
 #if SPECTATE_MODE_SHOW_WEAPON
-        g_spectate_mode_target->flags &= ~(1 << 4);
+        g_spectate_mode_target->flags &= ~(1u << 4);
         rf::Entity* entity = rf::entity_from_handle(g_spectate_mode_target->entity_handle);
         if (entity)
             entity->local_player = nullptr;
@@ -98,7 +98,7 @@ void multi_spectate_set_target_player(rf::Player* player)
     set_camera_target(player);
 
 #if SPECTATE_MODE_SHOW_WEAPON
-    player->flags |= 1 << 4;
+    player->flags |= 1u << 4;
     player->fpgun_data.fpgun_weapon_type = -1;
     player->weapon_mesh_handle = nullptr;
     rf::Entity* entity = rf::entity_from_handle(player->entity_handle);

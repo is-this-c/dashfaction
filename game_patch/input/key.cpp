@@ -231,7 +231,7 @@ CodeInjection control_config_init_patch{
                                        rf::AlpineControlConfigAction::AF_ACTION_SPECTATE_MENU);
         alpine_control_config_add_item(ccp, "Suppress autoswitch", 0, -1, -1, -1,
                                        rf::AlpineControlConfigAction::AF_ACTION_NO_AUTOSWITCH);
-        alpine_control_config_add_item(ccp, "Show a server's config", false, rf::KEY_F5, -1, -1,
+        alpine_control_config_add_item(ccp, "Remote server config", false, rf::KEY_F5, -1, -1,
                                        rf::AlpineControlConfigAction::AF_ACTION_REMOTE_SERVER_CFG);
     },
 };
