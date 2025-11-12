@@ -154,10 +154,19 @@ CodeInjection key_name_in_options_patch{
 
 CodeInjection key_get_hook{
     0x0051F000,
-    []() {
+    [] (auto& regs) {
         // Process messages here because when watching videos main loop is not running
         rf::os_poll();
-    },
+
+        if (rf::close_app_req) {
+            // If we are playing a video, cancel.
+            const int bink_handle = addr_as_ref<int>(0x018871E4);
+            if (bink_handle) {
+                regs.eax = rf::KEY_ESC;
+                regs.eip = 0x0051F00F;
+            }
+        }
+    }
 };
 
 void alpine_control_config_add_item(rf::ControlConfig* config, const char* name, bool is_repeat,
