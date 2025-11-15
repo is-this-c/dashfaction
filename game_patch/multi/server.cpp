@@ -1436,7 +1436,7 @@ void remove_ready_player(rf::Player* player)
         if (!proc_player || proc_player == player) {
             continue; // skip the player who started the vote
         }
-        af_send_automated_chat_msg(msg_others.c_str(), proc_player);
+        af_send_automated_chat_msg(msg_others, proc_player);
     }
 }
 
