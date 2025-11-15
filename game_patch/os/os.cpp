@@ -145,7 +145,7 @@ void os_apply_patch()
     // Disable keyboard hooks (they were supposed to block alt-tab; they does not work in modern OSes anyway)
     write_mem<u8>(0x00524C98, asm_opcodes::jmp_rel_short);
 
-    // Support `rf::app_close_req` for clients in addition to dedicated servers.
+    // Support `rf::close_app_req` for clients in addition to dedicated servers.
     AsmWriter{0x004B2DE2}.nop(2);
 
     // Hooks for win32 console support
