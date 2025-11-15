@@ -1438,7 +1438,7 @@ void af_broadcast_automated_chat_msg(const std::string_view msg) {
 
 void af_send_automated_chat_msg(const std::string_view msg, rf::Player* player) {
     // Are we a server?
-    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+    if (!rf::is_multi || !rf::is_server) {
         return;
     }
 
