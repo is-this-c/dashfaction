@@ -8,6 +8,7 @@
 #include "../rf/multi.h"
 #include "../rf/level.h"
 #include "../rf/file/file.h"
+#include "../rf/mover.h"
 #include "level.h"
 #include "../multi/server.h"
 
@@ -28,6 +29,26 @@ CodeInjection level_read_data_check_restore_status_patch{
         // return to level_read_data failure path
         regs.eip = 0x004608CC;
     },
+};
+
+CodeInjection level_read_moving_group_travel_time_patch{
+    0x0046396C,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            return; // legacy behaviour
+        }
+        else {
+            rf::MoverKeyframe* kf = regs.edi;
+
+            if (!kf) {
+                return;
+            }
+
+            const float sum_ramp_times = kf->ramp_up_time_seconds + kf->ramp_down_time_seconds;
+            kf->forward_time_seconds = std::max(kf->forward_time_seconds, sum_ramp_times);
+            kf->reverse_time_seconds = std::max(kf->reverse_time_seconds, sum_ramp_times);
+        }
+    }
 };
 
 CodeInjection level_load_items_crash_fix{
@@ -116,6 +137,9 @@ void level_apply_patch()
 {
     // Add checking if restoring game state from save file failed during level loading
     level_read_data_check_restore_status_patch.install();
+
+    // Fix impossible mover timing values
+    level_read_moving_group_travel_time_patch.install();
 
     // Fix item_create null result handling in RFL loading (affects multiplayer only)
     level_load_items_crash_fix.install();

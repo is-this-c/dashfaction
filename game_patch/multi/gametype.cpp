@@ -1379,7 +1379,6 @@ void hill_mode_level_init()
     g_local_cap_gain_sfx_handle = -1;
     g_local_cap_gain_sfx_playing = false;
     multi_koth_reset_scores();
-    g_koth_info.rules.require_neutral_to_capture = gt_is_koth() ? false : true; // KOTH doesn't have CPs go neutral before recap
     g_cap_alarm_sound_id = rf::snd_pc_find_by_name("Alarm_02.wav");
 }
 

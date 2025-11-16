@@ -228,6 +228,10 @@ bool alpine_player_settings_load(rf::Player* player)
         g_alpine_game_config.simple_server_chat_msgs = std::stoi(settings["SimpleServerChatMsgs"]);
         processed_keys.insert("SimpleServerChatMsgs");
     }
+    if (settings.count("QuickExit")) {
+        g_alpine_game_config.quick_exit = std::stoi(settings["QuickExit"]);
+        processed_keys.insert("QuickExit");
+    }
     if (settings.count("ColorblindMode")) {
         int mode = std::stoi(settings["ColorblindMode"]);
         g_alpine_game_config.colorblind_mode = std::clamp(mode, 0, 3);
@@ -740,6 +744,7 @@ void alpine_player_settings_save(rf::Player* player)
     file << "RealArmorValues=" << g_alpine_game_config.real_armor_values << "\n";
     file << "AlwaysShowSpectators=" << g_alpine_game_config.always_show_spectators << "\n";
     file << "SimpleServerChatMsgs=" << g_alpine_game_config.simple_server_chat_msgs << "\n";
+    file << "QuickExit=" << g_alpine_game_config.quick_exit << "\n";
     file << "ColorblindMode=" << g_alpine_game_config.colorblind_mode << "\n";
     file << "AutoswitchFireWait=" << g_alpine_game_config.suppress_autoswitch_fire_wait << "\n";
     file << "AlwaysAutoswitchEmpty=" << g_alpine_game_config.always_autoswitch_empty << "\n";

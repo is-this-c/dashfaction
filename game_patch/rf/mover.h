@@ -48,6 +48,24 @@ namespace rf
         MKMT_LIFT = 0x6,
     };
 
+    enum MoverFlags
+    {
+        MF_PAUSED_AT_KEYFRAME = 0x1,
+        MF_DOOR = 0x2,
+        MF_ROTATE_IN_PLACE = 0x4,
+        MF_UNK_8 = 0x8,
+        MF_UNK_10 = 0x10,
+        MF_UNK_20 = 0x20,
+        MF_ACCEL_DECEL = 0x40,
+        MF_PAUSED = 0x80,
+        MF_STARTS_BACKWARDS = 0x100,
+        MF_USE_TRAV_TIME_AS_SPD = 0x400,
+        MF_FORCE_ORIENT = 0x800,
+        MF_NO_PLAYER_COLLIDE = 0x1000,
+        MF_DIR_FORWARD = 0x2000,
+        MF_UNK_4000 = 0x4000,
+    };
+
     struct Mover : Object
     {
         Mover* next;
@@ -55,7 +73,7 @@ namespace rf
         char mover_index;
         char padding[3];
         Timestamp field_298;
-        VArray<MoverKeyframe> keyframes;
+        VArray<MoverKeyframe*> keyframes;
         VArray<int> object_uids;
         VArray<int> brush_uids;
         VArray<int> object_handles;
@@ -73,7 +91,7 @@ namespace rf
         int stop_completely_at_keyframe;
         Timestamp wait_timestamp;
         int trigger_handle;
-        int mover_flags;
+        MoverFlags mover_flags;
         int sound_instances[4];
     };
     static_assert(sizeof(Mover) == 0x32C);
@@ -81,6 +99,8 @@ namespace rf
     static auto& mover_brush_list = addr_as_ref<MoverBrush>(0x0064E6E0);
     static auto& mover_activate_from_trigger =
         addr_as_ref<void(int mover_handle, int trigger_handle, int activator_handle)>(0x0046ABA0);
+    static auto& mover_is_obstructed = addr_as_ref<bool(Mover* mp)>(0x0046A280);
+    static auto& mover_is_obstructed_by_entity = addr_as_ref<bool(Mover* mp)>(0x0046A1E0);
 
 }
 

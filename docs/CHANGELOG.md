@@ -92,9 +92,12 @@ Version 1.2.0 (Willow): Not yet released
 - Add `gt` alias to `sv_gametype` command
 - Allow `sv_gametype` execution via rcon
 - Add `dbg_numgeos` debug command to count number of geo craters in current level
-- Add `legacy_mover_velocity` and `legacy_mover_rot_accel` settings to level properties window in level editor
+- Add legacy mover setting to level properties window in level editor
+- Add `Inspect weapon` control bind
 
 [@is-this-c](https://github.com/is-this-c)
+- Add `key_quick_exit` command to restore keyboard shortcut `Shift+Esc` to quit out of Red Faction
+- Support `Alt+F4` or pressing X on window to quit out of Red Faction
 - Add `ui_remote_server_cfg` command and a configurable control to display a remote server's config
 - Add `ui_always_show_spectators` command to display spectators in multiplayer
 - Simplify code that fixed broken events if their delay parameter was set
@@ -129,6 +132,8 @@ Version 1.2.0 (Willow): Not yet released
 - Fix rare crash on game shutdown when certain mods are loaded
 - Fix slow-moving translating movers not working as expected (unless legacy switch is on)
 - Fix accelerating/decelerating rotating movers not working as expected (unless legacy switch is on)
+- Fix `Ping Pong Infinite`, `Loop Once`, and `Loop Infinite` modes for rotating movers (unless legacy switch is on)
+- Fix strange behaviour of mover travel times when accel + decel is greater than total travel time (unless fix switch is off)
 
 [@is-this-c](https://github.com/is-this-c)
 - Fix `PgUp`, `PgDown`, `End`, and `Home` on numeric keypads

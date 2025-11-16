@@ -199,6 +199,7 @@ namespace rf
     static auto& get_player_entity_parent_vmesh = addr_as_ref<VMesh*(Player*)>(0x004A7830);
     static auto& game_get_skill_level = addr_as_ref<GameDifficultyLevel()>(0x004369D0);
     static auto& game_set_skill_level = addr_as_ref<void(GameDifficultyLevel)>(0x00436970);
+    static auto& player_get_current_weapon = addr_as_ref<int(Player* pp)>(0x004A5910);
     static auto& player_set_default_primary = addr_as_ref<void(Player* pp, int weapon_type)>(0x004A4070);
     static auto& player_add_weapon = addr_as_ref<void(Player* pp, int weapon_type, int ammo)>(0x004A4000);  
     static auto& game_get_gore_level = addr_as_ref<int()>(0x00436A20);

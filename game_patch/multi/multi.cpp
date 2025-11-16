@@ -530,10 +530,6 @@ void start_level_in_multi(std::string filename) {
 
     if (is_valid) {
         rf::netgame.levels.add(valid_filename.c_str());
-
-        rf::set_in_mp_flag();
-        rf::multi_start(0,0);
-
         rf::netgame.max_time_seconds = 3600.0f;
         rf::netgame.max_kills = 30;
         rf::netgame.geomod_limit = 64;
@@ -549,6 +545,8 @@ void start_level_in_multi(std::string filename) {
 
         configure_custom_gametype_listen_server_settings();
 
+        rf::set_in_mp_flag();
+        rf::multi_start(0, 0);
         rf::multi_hud_clear_chat();
         rf::multi_load_next_level();
         rf::multi_init_server();

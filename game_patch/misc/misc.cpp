@@ -230,18 +230,130 @@ CodeInjection mover_rotating_keyframe_oob_crashfix{
 CallHook<void(float*, float, float)> cap_float_mover_process_pre_hook{
     0x00469AD0,
     [](float* vel, float min, float max) {
-        if (AlpineLevelProperties::instance().legacy_mover_velocity) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
             cap_float_mover_process_pre_hook.call_target(vel, min, max);
+            return;
         }
-        else {
-            if (max <= 0.0f) {
-                *vel = 0.0f;
-                return;
-            }
-            // legacy behaviour clamps vel to 0.4f which breaks very slow moving movers
-            *vel = std::clamp(*vel, 0.0f, max);
+
+        if (max <= 0.0f) {
+            *vel = 0.0f;
+            return;
         }
+        // legacy behaviour clamps vel to 0.4f which breaks very slow moving movers
+        *vel = std::clamp(*vel, 0.0f, max);
     },
+};
+
+float alpine_trans_progress_trapezoid(const rf::MoverKeyframe* kf, float cfg_time)
+{
+    if (!kf || cfg_time <= 0.0f) {
+        return 0.0f;
+    }
+
+    // adjust travel time value to maintain trapezoidal velocity profile when using accel/decel
+    const float accel = std::max(kf->ramp_up_time_seconds, 0.0f);
+    const float decel = std::max(kf->ramp_down_time_seconds, 0.0f);
+    const float correction = 0.5f * (accel + decel);
+    const float travel_time = cfg_time - correction;
+
+    // is fed into stock game velocity calculation logic
+    return travel_time;
+}
+
+CodeInjection mover_process_pre_travel_time_fwd_patch{
+    0x004698F5,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            return; // legacy behaviour
+        }
+
+        //rf::Mover* mp = regs.esi;
+        rf::MoverKeyframe* kf = regs.ebp;
+
+        if (!kf) {
+            return;
+        }
+
+        const float cfg_time = kf->forward_time_seconds; // forward travel
+        float travel_time = alpine_trans_progress_trapezoid(kf, cfg_time);
+
+        if (travel_time <= 0.0f) {
+            return; // no adjustment
+        }
+
+        regs.ecx = travel_time;
+    }
+};
+
+CodeInjection mover_process_pre_travel_time_bwd_patch{
+    0x004699C7,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            return; // legacy behaviour
+        }
+
+        //rf::Mover* mp = regs.esi;
+        rf::MoverKeyframe* kf = regs.ebp;
+
+        if (!kf) {
+            return;
+        }
+
+        const float cfg_time = kf->reverse_time_seconds; // backward travel
+        float travel_time = alpine_trans_progress_trapezoid(kf, cfg_time);
+
+        if (travel_time <= 0.0f) {
+            return; // no adjustment
+        }
+
+        regs.edx = travel_time;
+    }
+};
+
+// ensure movers actually get to their destination keyframe if decel makes cur_vel drop to 0
+CodeInjection mover_process_pre_cur_vel_patch{
+    0x00469B16,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            return; // legacy behaviour
+        }
+
+        rf::Mover* mp = regs.esi;
+        if (!mp || mp->stop_at_keyframe == -1)
+            return;
+
+        if (mp->mover_flags & rf::MoverFlags::MF_PAUSED)
+            return; // do not snap if paused intentionally
+
+        // game calls mover_reverse_direction if doors are obstructed,
+        // which zeroes cur_vel, so we need to avoid snapping in that case
+        if ((mp->mover_flags & rf::MoverFlags::MF_DOOR) && (rf::mover_is_obstructed(mp) || rf::mover_is_obstructed_by_entity(mp))) {
+            return; // do not snap if it's a door and is obstructed
+        }
+
+        const int start_idx = mp->start_at_keyframe;
+        const int stop_idx = mp->stop_at_keyframe;
+        if (start_idx < 0 || stop_idx < 0)
+            return;
+
+        rf::MoverKeyframe* kf_start = mp->keyframes.get(start_idx);
+        rf::MoverKeyframe* kf_stop = mp->keyframes.get(stop_idx);
+        if (!kf_start || !kf_stop)
+            return;
+
+        const float max_dist = rf::vec_dist(&kf_start->pos, &kf_stop->pos);
+        if (max_dist <= 0.0f)
+            return;
+
+        if (mp->dist_travelled <= 0.0f || mp->dist_travelled >= max_dist)
+            return;
+
+        if ( mp->cur_vel <= 0.0f) {
+            mp->dist_travelled = max_dist;
+            mp->cur_vel = 0.0f;
+            mp->p_data.next_pos = kf_stop->pos;
+        }
+    }
 };
 
 static float alpine_rot_progress_trapezoid(float t, float T, float accel, float decel)
@@ -254,19 +366,16 @@ static float alpine_rot_progress_trapezoid(float t, float T, float accel, float 
     if (t >= T)
         return 1.0f;
 
-    // if the mapper made accel+decel > total time, scale them down proportionally
-    float sum = accel + decel;
-    if (sum > 0.0f && sum > T) {
-        float s = T / sum;
-        accel *= s;
-        decel *= s;
-    }
-
     // no accel/decel = linear movement
     if (accel <= 0.0f && decel <= 0.0f)
         return t / T;
 
-    const float v_max = 1.0f / (T - 0.5f * (accel + decel)); // full area = 1
+    const float v_max_denom = T - 0.5f * (accel + decel);
+
+    if (v_max_denom <= 0.0f)
+        return t / T; // fall back to linear, only possible if "fix mover times" is off
+
+    const float v_max = 1.0f / v_max_denom; // full area = 1
     const float cruise_start = accel;
     const float cruise_end   = T - decel;
 
@@ -289,59 +398,61 @@ static float alpine_rot_progress_trapezoid(float t, float T, float accel, float 
 
 CodeInjection mover_rotating_process_pre_accel_patch{
     0x0046A55F,
-    [](auto& regs)
-    {
-        if (AlpineLevelProperties::instance().legacy_mover_rot_accel) {
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
             return; // legacy behaviour
         }
-        else {
-            rf::Mover* mp = regs.esi;
-            rf::MoverKeyframe* kf0 = regs.ebp;
 
-            if (!mp || !kf0 || mp->stop_at_keyframe == -1) {
-                regs.eip = 0x0046A5D8; // abort
-                return;
-            }
+        rf::Mover* mp = regs.esi;
+        rf::MoverKeyframe* kf0 = regs.ebp;
 
-            const bool forward = (mp->mover_flags & 0x2000) != 0;
-            const float T = forward ? kf0->forward_time_seconds : kf0->reverse_time_seconds;
-            const float t = mp->travel_time_seconds;
-
-            if (T <= 0.0f) { // invalid forward/reverse time
-                regs.eip = 0x0046A6C9;
-                return;
-            }
-
-            if (t >= T) { // travel time exceeds forward/reverse time
-                regs.eip = 0x0046A6C9;
-                return;
-            }
-
-            const float A = kf0->rotation_angle; // radians
-
-            // no warping after accel/decel
-            float accel = kf0->ramp_up_time_seconds;
-            float decel = kf0->ramp_down_time_seconds;
-            if (accel < 0.0f)
-                accel = 0.0f;
-            if (decel < 0.0f)
-                decel = 0.0f;
-
-            const float p = alpine_rot_progress_trapezoid(t, T, accel, decel);
-
-            float angle_now = forward ? (A * p) : (A * (1.0f - p));
-
-            constexpr float two_pi = 6.2831855f;
-            if (angle_now >= two_pi || angle_now < 0.0f) {
-                angle_now = std::fmod(angle_now, two_pi);
-                if (angle_now < 0.0f)
-                    angle_now += two_pi;
-            }
-
-            mp->rot_cur_pos = angle_now;
-
-            regs.eip = 0x0046A5D8;
+        if (!mp || !kf0 || mp->stop_at_keyframe == -1) {
+            regs.eip = 0x0046A5D8; // abort
+            return;
         }
+
+        const bool forward = (mp->mover_flags & rf::MoverFlags::MF_DIR_FORWARD) != 0;
+        const float T = forward ? kf0->forward_time_seconds : kf0->reverse_time_seconds;
+        const float t = mp->travel_time_seconds;
+
+        if (T <= 0.0f) { // invalid forward/reverse time
+            regs.eip = 0x0046A6C9;
+            return;
+        }
+
+        if (t >= T) { // travel time exceeds forward/reverse time
+            regs.eip = 0x0046A6C9;
+            return;
+        }
+
+        const float A = kf0->rotation_angle; // radians
+        const float accel = std::max(kf0->ramp_up_time_seconds, 0.0f);
+        const float decel = std::max(kf0->ramp_down_time_seconds, 0.0f);
+        const float p = alpine_rot_progress_trapezoid(t, T, accel, decel);
+
+        float angle_now = forward ? (A * p) : (A * (1.0f - p));
+
+        constexpr float two_pi = 6.2831855f;
+        if (angle_now >= two_pi || angle_now < 0.0f) {
+            angle_now = std::fmod(angle_now, two_pi);
+            if (angle_now < 0.0f)
+                angle_now += two_pi;
+        }
+
+        mp->rot_cur_pos = angle_now;
+
+        regs.eip = 0x0046A5D8;
+    }
+};
+
+CodeInjection mover_rotating_process_pre_ping_pong_patch{
+    0x0046A84F,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            return; // legacy behaviour
+        }
+
+        regs.eip = 0x0046A855; // skip original code which erroneously removes MF_DIR_FORWARD flag
     }
 };
 
@@ -709,9 +820,17 @@ void misc_init()
 
     // Allow very slow speed movers
     cap_float_mover_process_pre_hook.install();
+    mover_process_pre_cur_vel_patch.install();
 
-    // Fix accel/decel for rotating movers
+    // Calculate correct travel time for movers with accel/decel
+    mover_process_pre_travel_time_fwd_patch.install();
+    mover_process_pre_travel_time_bwd_patch.install();
+
+    // Fix accel/decel and "Loop" mode behaviour for rotating movers
     mover_rotating_process_pre_accel_patch.install();
+
+    // Fix "Ping Pong Infinite" mode behaviour for rotating movers
+    mover_rotating_process_pre_ping_pong_patch.install();
 
     // Fix crash in LEGO_MP mod caused by XSTR(1000, "RL"); for some reason it does not crash in PF...
     parser_xstr_oob_fix.install();

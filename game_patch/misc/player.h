@@ -69,3 +69,4 @@ bool is_server_minimum_af_version(int version_major, int version_minor);
 void player_multi_level_post_init();
 void update_player_flashlight();
 void ping_looked_at_location();
+void fpgun_play_random_idle_anim();

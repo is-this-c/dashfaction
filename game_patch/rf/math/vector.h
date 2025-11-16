@@ -29,6 +29,11 @@ namespace rf
             AddrCaller{0x0040A070}.this_call(this, out_result, scale);
         }
 
+        void get_substracted(Vector3* out_result, const Vector3* other)
+        {
+            AddrCaller{0x00409FA0}.this_call(this, out_result, other);
+        }
+
         [[nodiscard]] Vector3 cross(const Vector3& other) const
         {
             return Vector3{
@@ -283,6 +288,7 @@ namespace rf
     };
 
     static auto& vec2_zero_vector = addr_as_ref<Vector2>(0x0173C370);
+    static auto& vec_dist = addr_as_ref<float(const rf::Vector3*, const rf::Vector3*)>(0x004FAED0);
     static auto& vec_dist_squared = addr_as_ref<float(const rf::Vector3*, const rf::Vector3*)>(0x004FAF00);
     static auto& vec_dist_approx = addr_as_ref<float(const rf::Vector3*, const rf::Vector3*)>(0x004FAF30);
     }
