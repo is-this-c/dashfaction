@@ -463,7 +463,7 @@ std::map<AlpineDedEventID, FieldConfig> eventFieldConfigs = {
         },
         {
             {FIELD_INT1,
-            {"Deathmatch", "Capture the Flag", "Team Deathmatch", "King of the Hill", "Damage Control", "Revolt"}}
+            {"Deathmatch", "Capture the Flag", "Team Deathmatch", "King of the Hill", "Damage Control", "Revolt", "Run"}}
         },
         {
             {FIELD_INT1, true}

@@ -291,6 +291,9 @@ CodeInjection player_execute_action_patch{
                 static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_SELF_KILL) &&
                 rf::is_multi) {
                 rf::player_kill_self(rf::local_player);
+                if (gt_is_run()) {
+                    multi_hud_reset_run_gt_timer();
+                }
             }
             else if (action_index == starting_alpine_control_index +
                 static_cast<int>(rf::AlpineControlConfigAction::AF_ACTION_DROP_FLAG) &&

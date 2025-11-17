@@ -1,4 +1,5 @@
 #include <ranges>
+#include <cstdint>
 #include <patch_common/CodeInjection.h>
 #include <patch_common/AsmWriter.h>
 #include <patch_common/FunHook.h>
@@ -17,6 +18,8 @@
 #include "../rf/multi.h"
 #include "../rf/player/player.h"
 #include "../rf/os/frametime.h"
+#include "../rf/os/timer.h"
+#include "../rf/os/timestamp.h"
 #include "../rf/os/console.h"
 #include "../rf/os/os.h"
 #include "../rf/gameseq.h"
@@ -45,6 +48,7 @@ static std::string time_left_string_format = "";
 static int time_left_string_x_pos_offset = 135;
 static int time_left_string_y_pos_offset = 21;
 static std::tuple time_left_string_color = {0, 255, 0, 255};
+static rf::TimestampRealtime g_run_life_start_timestamp;
 
 // Radio messages
 static const ChatMenuList radio_messages_menu{
@@ -378,7 +382,7 @@ bool is_element_valid(const ChatMenuElement& element) {
     if (element.type == ChatMenuListType::CTF && rf::multi_get_game_type() == rf::NG_TYPE_CTF) {
         return true;
     }
-    if (element.type == ChatMenuListType::TeamMode && rf::multi_get_game_type() != rf::NG_TYPE_DM) {
+    if (element.type == ChatMenuListType::TeamMode && multi_is_team_game_type()) {
         return true;
     }
     if (element.type == ChatMenuListType::Map && g_level_chat_menu_present && !element.display_string.empty()) {
@@ -615,6 +619,66 @@ static void hud_render_koth_dc_split_scores(
     rf::gr::rect_border(x, y, w, h);
 }
 
+static uint32_t run_timer_elapsed_milliseconds()
+{
+    if (!g_run_life_start_timestamp.valid() || !rf::local_player) {
+        return 0;
+    }
+
+    const uint32_t now_ms = static_cast<uint32_t>(rf::timer_get_milliseconds());
+    const uint32_t start_ms = static_cast<uint32_t>(g_run_life_start_timestamp.value);
+
+    return now_ms - start_ms;
+}
+
+static std::string build_run_timer_string()
+{
+    if (!g_run_life_start_timestamp.valid()) {
+        return "00:00:00.000";
+    }
+
+    const uint32_t elapsed_ms = run_timer_elapsed_milliseconds();
+    const uint32_t total_seconds = elapsed_ms / 1000;
+
+    const int hours = static_cast<int>(total_seconds / 3600);
+    const int minutes = static_cast<int>((total_seconds % 3600) / 60);
+    const int seconds = static_cast<int>(total_seconds % 60);
+    const int milliseconds = static_cast<int>(elapsed_ms % 1000);
+
+    return std::format("{:02}:{:02}:{:02}.{:03}", hours, minutes, seconds, milliseconds);
+}
+
+static void hud_render_run_timer_widget(int x, int y, int w, int h, int font_id)
+{
+    rf::gr::set_color(0, 0, 0, 150);
+    rf::gr::rect(x, y, w, h);
+
+    const int half_w = w / 2;
+    rf::gr::set_color(0, 0, 0, 160);
+    rf::gr::rect(x + 1, y + 1, half_w - 1, h - 2);
+    rf::gr::rect(x + half_w, y + 1, w - half_w - 1, h - 2);
+
+    rf::gr::set_color(255, 255, 255, 170);
+    rf::gr::rect_border(x, y, w, h);
+
+    auto draw_shadow_text = [&](int tx, int ty, const std::string& text) {
+        rf::gr::set_color(0, 0, 0, 230);
+        rf::gr::string(tx + 1, ty + 1, text.c_str(), font_id);
+        rf::gr::set_color(255, 255, 255, 255);
+        rf::gr::string(tx, ty, text.c_str(), font_id);
+    };
+
+    const std::string timer_string = build_run_timer_string();
+    int timer_w = 0;
+    int timer_h = 0;
+    rf::gr::get_string_size(&timer_w, &timer_h, timer_string.c_str(), -1, font_id);
+    const bool big_ui = g_big_team_scores_hud;
+    const int timer_margin_x = big_ui ? 33 : 42;
+    const int timer_x = x + timer_margin_x;
+    const int timer_y = y + (h - timer_h) / 2;
+    draw_shadow_text(timer_x, timer_y, timer_string);
+}
+
 void multi_hud_render_team_scores()
 {
     int clip_h = rf::gr::clip_height();
@@ -623,9 +687,10 @@ void multi_hud_render_team_scores()
     const auto game_type = rf::multi_get_game_type();
     const bool is_koth_dc = (game_type == rf::NG_TYPE_KOTH || game_type == rf::NG_TYPE_DC);
     const bool is_rev = (game_type == rf::NG_TYPE_REV);
+    const bool is_run = (game_type == rf::NG_TYPE_RUN);
 
     int box_w = 0, box_h = 0;
-    if (is_koth_dc) {
+    if (is_koth_dc || is_run) {
         box_w = g_big_team_scores_hud ? 240 : 185;
         box_h = g_big_team_scores_hud ? 60  : 40;
     }
@@ -649,7 +714,7 @@ void multi_hud_render_team_scores()
     int flag_x = g_big_team_scores_hud ? 410 : 205;
     float flag_scale = g_big_team_scores_hud ? 1.5f : 1.0f;
 
-    if (!is_koth_dc && !is_rev) {
+    if (!is_koth_dc && !is_run && !is_rev) {
         rf::gr::rect(box_x, box_y, box_w, box_h);
     }
     int font_id = hud_get_default_font();
@@ -710,7 +775,7 @@ void multi_hud_render_team_scores()
         }
     }
 
-    if (multi_is_team_game_type() && !is_koth_dc && !is_rev) {
+    if (multi_is_team_game_type() && !is_koth_dc && !is_run && !is_rev) {
         float miniflag_scale = g_big_team_scores_hud ? 1.5f : 1.0f;
         rf::gr::set_color(255, 255, 255, 255);
         if (rf::local_player) {
@@ -727,28 +792,28 @@ void multi_hud_render_team_scores()
         hud_scaled_bitmap(rf::hud_miniflag_blue_bmh, miniflag_x, blue_miniflag_y, miniflag_scale, rf::hud_flag_gr_mode);
     }
 
-    int red_score, blue_score;
-    if (g_debug_team_scores_hud) {
-        red_score = 15;
-        blue_score = 15;
+    int red_score = 0;
+    int blue_score = 0;
+    if (!is_run) {
+        if (g_debug_team_scores_hud) {
+            red_score = 15;
+            blue_score = 15;
+        }
+        else if (game_type == rf::NG_TYPE_CTF) {
+            red_score = rf::multi_ctf_get_red_team_score();
+            blue_score = rf::multi_ctf_get_blue_team_score();
+        }
+        else if (game_type == rf::NG_TYPE_TEAMDM) {
+            rf::gr::set_color(53, 207, 22, 255);
+            red_score = rf::multi_tdm_get_red_team_score();
+            blue_score = rf::multi_tdm_get_blue_team_score();
+        }
+        else if (game_type == rf::NG_TYPE_KOTH || game_type == rf::NG_TYPE_DC) {
+            red_score = multi_koth_get_red_team_score();
+            blue_score = multi_koth_get_blue_team_score();
+        }
     }
-    else if (game_type == rf::NG_TYPE_CTF) {
-        red_score = rf::multi_ctf_get_red_team_score();
-        blue_score = rf::multi_ctf_get_blue_team_score();
-    }
-    else if (game_type == rf::NG_TYPE_TEAMDM) {
-        rf::gr::set_color(53, 207, 22, 255);
-        red_score = rf::multi_tdm_get_red_team_score();
-        blue_score = rf::multi_tdm_get_blue_team_score();
-    }
-    else if (game_type == rf::NG_TYPE_KOTH || game_type == rf::NG_TYPE_DC) {
-        red_score = multi_koth_get_red_team_score();
-        blue_score = multi_koth_get_blue_team_score();
-    }
-    else {
-        red_score = 0;
-        blue_score = 0;
-    }
+
     auto red_score_str = std::to_string(red_score);
     auto blue_score_str = std::to_string(blue_score);
     int str_w, str_h;
@@ -758,6 +823,9 @@ void multi_hud_render_team_scores()
             rf::hud_miniflag_blue_bmh, rf::hud_miniflag_hilight_bmh, rf::hud_flag_gr_mode,
             (rf::local_player && rf::local_player->team == rf::TEAM_RED),
             (rf::local_player && rf::local_player->team == rf::TEAM_BLUE), (g_big_team_scores_hud ? 1.5f : 1.0f));
+    }
+    else if (is_run) {
+        hud_render_run_timer_widget(box_x, box_y, box_w, box_h, font_id);
     }
     else if (game_type != rf::NG_TYPE_REV) {
         rf::gr::get_string_size(&str_w, &str_h, red_score_str.c_str(), -1, font_id);
@@ -775,7 +843,7 @@ void multi_hud_render_team_scores()
 CodeInjection multi_hud_render_team_scores_new_gamemodes_patch {
     0x00476DEB,
     [](auto& regs) {
-        if (gt_is_koth() || gt_is_dc()|| gt_is_rev()) {
+        if (gt_is_koth() || gt_is_dc() || gt_is_rev() || gt_is_run()) {
             regs.eip = 0x00476E06; // multi_hud_render_team_scores
         }
     }
@@ -946,7 +1014,7 @@ void multi_hud_render_local_player_spectators() {
         constexpr int box_x = 10;
 
         int x = 10;
-        if (rf::multi_get_game_type() != rf::NG_TYPE_DM) {
+        if (multi_is_team_game_type()) {
             x += box_x + box_w;
             if (rf::multi_get_game_type() == rf::NG_TYPE_CTF) {
                 const bool has_flag = rf::multi_ctf_get_blue_flag_player() == rf::local_player
@@ -1262,6 +1330,7 @@ CodeInjection multi_hud_render_patch{
 void multi_hud_level_init() {
     g_draw_respawn_timer_notification = false;
     g_draw_respawn_timer_can_respawn = false;
+    g_run_life_start_timestamp.invalidate();
 
     level_menu = ChatMenuList{
         .display_string = "MAP MESSAGES",
@@ -1400,7 +1469,7 @@ void toggle_chat_menu(ChatMenuType type) {
         // Determine the new active menu
         switch (type) {
             case ChatMenuType::Comms:
-                g_active_menu = (rf::multi_get_game_type() == rf::NG_TYPE_DM) ? &express_menu : &radio_messages_menu;
+                g_active_menu = multi_is_team_game_type() ? &radio_messages_menu : &express_menu;
                 break;
             case ChatMenuType::Taunts:
                 g_active_menu = &taunt_menu;
@@ -1720,6 +1789,18 @@ void multi_hud_apply_patches()
     ui_simple_server_chat_messages_cmd.register_cmd();
 
     control_config_get_mouse_delta_hook.install();
+}
+
+void multi_hud_on_local_spawn()
+{
+    if (gt_is_run() && !g_run_life_start_timestamp.valid()) {
+        g_run_life_start_timestamp.set(0);
+    }
+}
+
+void multi_hud_reset_run_gt_timer()
+{
+    g_run_life_start_timestamp.invalidate();
 }
 
 void multi_hud_set_big(bool is_big)

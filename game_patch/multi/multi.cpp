@@ -12,6 +12,7 @@
 #include "multi_private.h"
 #include "alpine_packets.h"
 #include "server_internal.h"
+#include "gametype.h"
 #include "../hud/hud.h"
 #include "../rf/file/file.h"
 #include "../rf/level.h"
@@ -163,7 +164,7 @@ FunHook<void()> multi_limbo_init{
                 we_win = (my_score >= max_score); // count it as a win if tied for win
             }
         }
-        else {
+        else if (gt != rf::NG_TYPE_RUN) { // no winner in run
             int red = 0, blue = 0;
             switch (gt) {
             case rf::NG_TYPE_CTF: {
@@ -539,6 +540,7 @@ void start_level_in_multi(std::string filename) {
             : string_starts_with_ignore_case(filename, "koth") ? rf::NetGameType::NG_TYPE_KOTH
             : string_starts_with_ignore_case(filename, "dc") ? rf::NetGameType::NG_TYPE_DC
             : string_starts_with_ignore_case(filename, "rev") ? rf::NetGameType::NG_TYPE_REV
+            : string_starts_with_ignore_case(filename, "run") ? rf::NetGameType::NG_TYPE_RUN
             : rf::NetGameType::NG_TYPE_DM;
         rf::netgame.name = "Alpine Faction Test Server";
         rf::netgame.password = "password";

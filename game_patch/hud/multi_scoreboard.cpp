@@ -85,6 +85,9 @@ int draw_scoreboard_header(int x, int y, int w, rf::NetGameType game_type, bool 
             case rf::NG_TYPE_REV:
                 game_type_name = "REVOLT";
                 break;
+            case rf::NG_TYPE_RUN:
+                game_type_name = "RUN";
+                break;
             default:
                 game_type_name = rf::strings::deathmatch;
                 break;
@@ -133,7 +136,7 @@ int draw_scoreboard_header(int x, int y, int w, rf::NetGameType game_type, bool 
     cur_y += font_h + 8;
 
     // Draw team scores
-    if (game_type != rf::NG_TYPE_DM) {
+    if (multi_game_type_is_team_type(game_type)) {
         if (!dry_run) {
             unsigned red_score = 0, blue_score = 0;
             if (game_type == rf::NG_TYPE_CTF) {
@@ -315,10 +318,10 @@ void draw_scoreboard_internal_new(bool draw)
         right_players.push_back(rf::local_player);
     }
     game_type = rf::NG_TYPE_CTF;
-    bool group_by_team = game_type != rf::NG_TYPE_DM;
+    bool group_by_team = multi_game_type_is_team_type(game_type);
 #else
     // Sort players by score
-    bool group_by_team = game_type != rf::NG_TYPE_DM;
+    bool group_by_team = multi_game_type_is_team_type(game_type);
     if (group_by_team) {
         filter_and_sort_players(left_players, {rf::TEAM_RED});
         filter_and_sort_players(right_players, {rf::TEAM_BLUE});

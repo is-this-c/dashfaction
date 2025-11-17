@@ -12,6 +12,7 @@ Version 1.2.0 (Willow): Not yet released
 - Add `King of the Hill` (KOTH) multiplayer game type
 - Add `Damage Control` (DC) multiplayer game type
 - Add `Revolt` (REV) multiplayer game type
+- Add `Run` (RUN) multiplayer game type
 - Add colorblind mode rendering filter (Direct3D 11 renderer only)
 - Add client-configurable settings to control application of weapon auto switch
 - Add server-configurable weapon loadouts for players in multiplayer
@@ -54,7 +55,7 @@ Version 1.2.0 (Willow): Not yet released
 - Add `Control_Point_Handler` event
 - Add `cl_outlineheightscale` command to scale height of control point outlines
 - Add `cl_outlinesegments` command to set segment count for control point outline rings
-- Add `King of the Hill` game type selection for `Gametype_Gate` event
+- Add game type selection for `Gametype_Gate` event for KOTH, DC, REV, RUN
 - Print vote initiation alerts to dedicated server console
 - Add `reject_incompatible_clients` ADS setting
 - Add `r_colorblind` command for configuring colorblind mode rendering filter (Direct3D 11 renderer only)

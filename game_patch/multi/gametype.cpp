@@ -16,7 +16,7 @@
 #include "../rf/gameseq.h"
 #include "../rf/localize.h"
 
-static char* const* g_af_gametype_names[6];
+static char* const* g_af_gametype_names[7];
 
 static char koth_name[] = "KOTH";
 static char* koth_slot = koth_name;
@@ -24,6 +24,8 @@ static char dc_name[] = "DC";
 static char* dc_slot = dc_name;
 static char rev_name[] = "REV";
 static char* rev_slot = rev_name;
+static char run_name[] = "RUN";
+static char* run_slot = run_name;
 
 KothInfo g_koth_info; // KOTH and DC
 rf::Timestamp g_local_contest_alarm_cooldown;
@@ -38,6 +40,7 @@ void populate_gametype_table() {
     g_af_gametype_names[3] = &koth_slot;
     g_af_gametype_names[4] = &dc_slot;
     g_af_gametype_names[5] = &rev_slot;
+    g_af_gametype_names[6] = &run_slot;
 
     for (int i = 0; i < 5; ++i) {
         const char* const* slot = g_af_gametype_names[i];
@@ -70,7 +73,7 @@ bool multi_game_type_is_team_type(rf::NetGameType game_type)
         case rf::NG_TYPE_DC:
         case rf::NG_TYPE_REV:
             return true;
-        default: // DM
+        default: // DM, RUN
             return false;
     }
 }
@@ -82,7 +85,7 @@ bool multi_game_type_has_hills(rf::NetGameType game_type)
         case rf::NG_TYPE_DC:
         case rf::NG_TYPE_REV:
             return true;
-        default: // DM, CTF, TDM
+        default: // DM, CTF, TDM, RUN
             return false;
     }
 }
@@ -144,6 +147,11 @@ bool gt_is_dc()
 bool gt_is_rev()
 {
     return rf::multi_get_game_type() == rf::NetGameType::NG_TYPE_REV;
+}
+
+bool gt_is_run()
+{
+    return rf::multi_get_game_type() == rf::NetGameType::NG_TYPE_RUN;
 }
 
 HillInfo* koth_find_hill_by_uid(uint8_t uid)
@@ -1517,6 +1525,22 @@ CodeInjection multi_hud_render_target_name_color_patch{
     },
 };
 
+CallHook<int()> multi_get_game_type_non_team_mode_hook{
+    {
+        0x004A4234, // player_create_entity for team coloured player models
+        0x004808EF, // multi_spawn_player_server_side for "You are on team X" for listen server host
+        0x00443FC9, // chat_add_msg for [Team] prefix on team chat
+        0x00444A93, // multi_chat_say_show
+        0x00476CA8, // multi_hud_level_init for "You are on team X" for client
+        0x004827E1, // multi_get_new_player_team on join
+    },
+    []() {
+        // all are calls to multi_get_game_type in the stock game
+        // stock game uses "!multi_get_game_type()" to check for non-team modes because DM is 0
+        return multi_is_team_game_type() ? 1 : 0;
+    },
+};
+
 void gametype_do_patch()
 {
     // index rfl files for new gamemodes when opening listen server create menu
@@ -1556,4 +1580,7 @@ void gametype_do_patch()
 
     // initialize new gametype level settings
     multi_level_init_gametypes_injection.install();
+
+    // handle new non-team modes
+    multi_get_game_type_non_team_mode_hook.install();
 }

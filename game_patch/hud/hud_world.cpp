@@ -521,7 +521,7 @@ static void build_koth_hill_icons()
 void build_player_labels() {
     bool is_spectating = multi_spectate_is_spectating();
     bool show_all = is_spectating && g_alpine_game_config.world_hud_spectate_player_labels;
-    bool is_team_mode = rf::multi_get_game_type() != rf::NetGameType::NG_TYPE_DM;
+    bool is_team_mode = multi_is_team_game_type();
     bool show_teammates = g_alpine_game_config.world_hud_team_player_labels && is_team_mode && !is_spectating;
     auto spectate_target = multi_spectate_get_target_player();
 
@@ -998,7 +998,7 @@ void hud_world_do_frame() {
     }
     if (rf::is_multi &&
     ((multi_spectate_is_spectating() && g_alpine_game_config.world_hud_spectate_player_labels) ||
-    (!multi_spectate_is_spectating() && g_alpine_game_config.world_hud_team_player_labels && rf::multi_get_game_type() != rf::NetGameType::NG_TYPE_DM))) {
+    (!multi_spectate_is_spectating() && g_alpine_game_config.world_hud_team_player_labels && multi_is_team_game_type()))) {
         build_player_labels();
     }
 }

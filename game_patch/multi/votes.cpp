@@ -19,6 +19,7 @@
 #include <xlog/xlog.h>
 #include "server_internal.h"
 #include "multi.h"
+#include "gametype.h"
 #include "server.h"
 #include "alpine_packets.h"
 
@@ -358,7 +359,7 @@ struct VoteMatch : public Vote
         const auto desired_game_type =
             m_manual_rules_override ? m_manual_rules_override->rules.game_type : g_alpine_server_config_active_rules.game_type;
 
-        if (desired_game_type == rf::NG_TYPE_DM) {
+        if (!multi_game_type_is_team_type(desired_game_type)) {
             af_send_automated_chat_msg("\xA6 Matches must be played on a team game type.", source);
             return false;
         }

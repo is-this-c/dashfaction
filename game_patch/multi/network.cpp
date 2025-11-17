@@ -6,6 +6,7 @@
 #include <format>
 #include <functional>
 #include <thread>
+#include <utility>
 #include <winsock2.h>
 #include <iphlpapi.h>
 #include <ws2ipdef.h>
@@ -344,9 +345,9 @@ FunHook<MultiIoPacketHandler> process_game_info_packet_hook{
 CodeInjection process_game_info_packet_game_type_bounds_patch{
     0x0047B30B,
     [](auto& regs) {
-        // Valid game types are between 0 and 5
-        // 3 = KOTH, 4 = DC, 5 = REV
-        regs.ecx = std::clamp<int>(regs.ecx, 0, 5);
+        // Valid game types are between 0 and 6
+        // 3 = KOTH, 4 = DC, 5 = REV, 6 = RUN
+        regs.ecx = std::clamp<int>(regs.ecx, 0, 6);
     },
 };
 
@@ -1327,20 +1328,6 @@ FunHook<int(rf::NetAddr*, rf::JoinRequest*)> check_access_for_new_player_hook {
         return reason;
     },
 };
-
-static std::pair<bool, int> server_features_require_alpine_client()
-{
-    bool does_req_alpine_client = false;
-    int min_minor_ver = 0;
-
-    if (static_cast<int>(rf::netgame.type) >= 3 || // KOTH or higher
-        g_alpine_server_config_active_rules.spawn_loadout.loadouts_active) {
-        does_req_alpine_client = true;
-        min_minor_ver = std::max(min_minor_ver, 2); // AF v1.2+
-    }
-
-    return {does_req_alpine_client, min_minor_ver};
-}
 
 static std::pair<AlpineRestrictVerdict, std::string> check_join_request_restrict_status(ClientVersion cv, const AlpineFactionJoinReqPacketExt& info)
 {

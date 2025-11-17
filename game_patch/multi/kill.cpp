@@ -4,6 +4,7 @@
 #include <patch_common/AsmWriter.h>
 #include <unordered_map>
 #include "multi.h"
+#include "gametype.h"
 #include "endgame_votes.h"
 #include "../main/main.h"
 #include "server.h"
@@ -43,7 +44,7 @@ public:
         }
 
         const int effective_kill_limit = (gg.final_level ? gg.final_level->kills :
-            (rf::multi_get_game_type() == rf::NetGameType::NG_TYPE_DM
+            (!multi_game_type_is_team_type(rf::multi_get_game_type())
                 ? g_alpine_server_config_active_rules.individual_kill_limit
                 : g_alpine_server_config_active_rules.team_kill_limit)
             );

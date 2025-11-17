@@ -5,6 +5,7 @@
 #include <common/config/BuildConfig.h>
 #include "alpine_options.h"
 #include "alpine_settings.h"
+#include "../multi/gametype.h"
 #include "../rf/player/player.h"
 #include "../rf/player/camera.h"
 #include "../rf/sound/sound.h"
@@ -79,8 +80,7 @@ void player_fpgun_move_sounds(const rf::Vector3& camera_pos, const rf::Vector3& 
 void player_fpgun_reload_meshes(bool force)
 {
     int fpgun_team = 999;
-    auto game_type = rf::multi_get_game_type();
-    if (game_type == rf::NG_TYPE_TEAMDM || game_type == rf::NG_TYPE_CTF) {
+    if (multi_is_team_game_type()) {
         fpgun_team = g_fpgun_main_player->team;
     }
     auto& fpgun_meshes_current_mp_character = addr_as_ref<int>(0x005A0AEC);

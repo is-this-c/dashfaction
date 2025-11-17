@@ -297,6 +297,9 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
     // all modes get baton
     int baton_ammo = rf::weapon_types[rf::riot_stick_weapon_type].clip_size_multi;
     rules.spawn_loadout.add("Riot Stick", baton_ammo, false, true);
+    rules.set_pvp_damage_modifier(1.0f);
+    rules.no_player_collide = false;
+    rules.saving_enabled = false;
 
     switch (game_type) {
         case rf::NetGameType::NG_TYPE_KOTH: {
@@ -308,7 +311,7 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
 
             // primary weapon
             rules.spawn_loadout.remove("12mm handgun", false);
-            rules.default_player_weapon.set_weapon("Assault Rifle");
+            rules.default_player_weapon.set_weapon("Machine Pistol");
 
             rules.spawn_loadout.loadouts_active = true;
             break;
@@ -334,9 +337,23 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
 
             // primary weapon
             rules.spawn_loadout.remove("12mm handgun", false);
-            rules.default_player_weapon.set_weapon("Assault Rifle");
+            rules.default_player_weapon.set_weapon("Machine Pistol");
 
             rules.spawn_loadout.loadouts_active = true;
+            break;
+        }
+
+        case rf::NetGameType::NG_TYPE_RUN: {
+            rules.set_pvp_damage_modifier(0.0f);
+            rules.no_player_collide = true;
+            rules.saving_enabled = true;
+
+            rules.spawn_delay.enabled = false;
+
+            // primary weapon
+            rules.default_player_weapon.set_weapon("12mm handgun");
+
+            rules.spawn_loadout.loadouts_active = false;
             break;
         }
 
@@ -417,6 +434,10 @@ AlpineServerConfigRules parse_server_rules(const toml::table& t, const AlpineSer
         o.set_pvp_damage_modifier(*v);
     if (auto v = t["drop_amps"].value<bool>())
         o.drop_amps = *v;
+    if (auto v = t["no_player_collide"].value<bool>())
+        o.no_player_collide = *v;
+    if (auto v = t["location_pinging"].value<bool>())
+        o.location_pinging = *v;
     if (auto v = t["weapon_pickups_give_full_ammo"].value<bool>())
         o.weapon_items_give_full_ammo = *v;
     if (auto v = t["infinite_reloads"].value<bool>())
@@ -584,6 +605,8 @@ static AlpineRestrictConfig parse_alpine_restrict_config(const toml::table &t)
     AlpineRestrictConfig o;
     if (auto v = t["advertise_alpine"].value<bool>())
         o.advertise_alpine = *v;
+    if (auto v = t["only_welcome_alpine"].value<bool>())
+        o.only_welcome_alpine = *v;
     if (auto v = t["reject_incompatible"].value<bool>())
         o.reject_incompatible_clients = *v;
     if (auto v = t["clients_require_alpine"].value<bool>())
@@ -596,12 +619,6 @@ static AlpineRestrictConfig parse_alpine_restrict_config(const toml::table &t)
             o.alpine_server_version_enforce_min = *v;
         if (auto v = t["alpine_require_release_build"].value<bool>())
             o.alpine_require_release_build = *v;
-        if (auto v = t["only_welcome_alpine"].value<bool>())
-            o.only_welcome_alpine = *v;
-        if (auto v = t["no_player_collide"].value<bool>())
-            o.no_player_collide = *v;
-        if (auto v = t["location_pinging"].value<bool>())
-            o.location_pinging = *v;
         if (auto sub = t["vote_match"].as_table())
             o.vote_match = parse_vote_config(*sub);
         if (o.vote_match.enabled) {
@@ -1099,21 +1116,24 @@ std::string get_game_type_string(rf::NetGameType game_type) {
         case rf::NetGameType::NG_TYPE_TEAMDM:
             out_string = "TDM";
             break;
-         case rf::NetGameType::NG_TYPE_CTF:
+        case rf::NetGameType::NG_TYPE_CTF:
             out_string = "CTF";
             break;
-         case rf::NetGameType::NG_TYPE_KOTH:
-             out_string = "KOTH";
-             break;
-         case rf::NetGameType::NG_TYPE_DC:
-             out_string = "DC";
-             break;
-         case rf::NetGameType::NG_TYPE_REV:
-             out_string = "REV";
-             break;
-         default:
-             out_string = "DM";
-             break;
+        case rf::NetGameType::NG_TYPE_KOTH:
+            out_string = "KOTH";
+            break;
+        case rf::NetGameType::NG_TYPE_DC:
+            out_string = "DC";
+            break;
+        case rf::NetGameType::NG_TYPE_REV:
+            out_string = "REV";
+            break;
+        case rf::NetGameType::NG_TYPE_RUN:
+            out_string = "RUN";
+            break;
+        default:
+            out_string = "DM";
+            break;
     }
     return out_string;
 }
@@ -1124,20 +1144,23 @@ std::string get_game_type_string_long(rf::NetGameType game_type) {
         case rf::NetGameType::NG_TYPE_TEAMDM:
             out_string = "Team Deathmatch";
             break;
-         case rf::NetGameType::NG_TYPE_CTF:
+        case rf::NetGameType::NG_TYPE_CTF:
             out_string = "Capture the Flag";
             break;
-         case rf::NetGameType::NG_TYPE_KOTH:
-             out_string = "King of the Hill";
-             break;
-         case rf::NetGameType::NG_TYPE_DC:
-             out_string = "Damage Control";
-             break;
-         case rf::NetGameType::NG_TYPE_REV:
-             out_string = "Revolt";
-             break;
-         default:
-             out_string = "Deathmatch";
+        case rf::NetGameType::NG_TYPE_KOTH:
+            out_string = "King of the Hill";
+            break;
+        case rf::NetGameType::NG_TYPE_DC:
+            out_string = "Damage Control";
+            break;
+        case rf::NetGameType::NG_TYPE_REV:
+            out_string = "Revolt";
+            break;
+        case rf::NetGameType::NG_TYPE_RUN:
+            out_string = "Run";
+            break;
+        default:
+            out_string = "Deathmatch";
              break;
     }
     return out_string;
@@ -1288,6 +1311,10 @@ void print_rules(std::string& output, const AlpineServerConfigRules& rules, bool
         std::format_to(iter, "  Drop amps:                             {}\n", rules.drop_amps);
     if (base || rules.drop_weapons != b.drop_weapons)
         std::format_to(iter, "  Drop weapons:                          {}\n", rules.drop_weapons);
+    if (base || rules.no_player_collide != b.no_player_collide)
+        std::format_to(iter, "  No player collide:                     {}\n", rules.no_player_collide);
+    if (base || rules.location_pinging != b.location_pinging)
+        std::format_to(iter, "  Location pinging:                      {}\n", rules.location_pinging);
     if (base || rules.weapon_items_give_full_ammo != b.weapon_items_give_full_ammo)
         std::format_to(iter, "  Weapon pickups give full ammo:         {}\n", rules.weapon_items_give_full_ammo);
     if (base || rules.weapon_infinite_magazines != b.weapon_infinite_magazines)
@@ -1608,15 +1635,13 @@ void print_alpine_dedicated_server_config_info(std::string& output, bool verbose
 
     // alpine restrict
     std::format_to(iter, "  Advertise Alpine:                      {}\n", cfg.alpine_restricted_config.advertise_alpine);
+    std::format_to(iter, "  Only welcome Alpine players:           {}\n", cfg.alpine_restricted_config.only_welcome_alpine);
     std::format_to(iter, "  Reject incompatible clients:           {}\n", cfg.alpine_restricted_config.reject_incompatible_clients);
     std::format_to(iter, "  Clients require Alpine:                {}\n", cfg.alpine_restricted_config.clients_require_alpine);
     if (cfg.alpine_restricted_config.clients_require_alpine) {
         std::format_to(iter, "    Reject non-Alpine clients:           {}\n", cfg.alpine_restricted_config.reject_non_alpine_clients);
         std::format_to(iter, "    Enforce min server version:          {}\n", cfg.alpine_restricted_config.alpine_server_version_enforce_min);
         std::format_to(iter, "    Require release build:               {}\n", cfg.alpine_restricted_config.alpine_require_release_build);
-        std::format_to(iter, "    Only welcome Alpine players:         {}\n", cfg.alpine_restricted_config.only_welcome_alpine);
-        std::format_to(iter, "    No player collide:                   {}\n", cfg.alpine_restricted_config.no_player_collide);
-        std::format_to(iter, "    Location pinging:                    {}\n", cfg.alpine_restricted_config.location_pinging);
 
         // match mode
         auto& vm = cfg.alpine_restricted_config.vote_match;

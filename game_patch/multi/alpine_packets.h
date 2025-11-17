@@ -213,6 +213,7 @@ void af_send_packet(rf::Player* player, const void* data, int len, bool is_relia
 void af_send_ping_location_req_packet(rf::Vector3* pos);
 static void af_process_ping_location_req_packet(const void* data, size_t len, const rf::NetAddr& addr);
 void af_send_ping_location_packet_to_team(rf::Vector3* pos, uint8_t player_id, rf::ubyte team);
+void af_send_ping_location_packet_to_all(rf::Vector3* pos, uint8_t player_id);
 static void af_process_ping_location_packet(const void* data, size_t len, const rf::NetAddr& addr);
 void af_send_damage_notify_packet(uint8_t player_id, float damage, bool died, rf::Player* player);
 static void af_process_damage_notify_packet(const void* data, size_t len, const rf::NetAddr& addr);

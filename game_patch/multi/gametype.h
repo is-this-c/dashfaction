@@ -18,7 +18,8 @@ static const char* const multi_rfl_prefixes[] = {
     // "ctf",
     "koth",
     "dc",
-    "rev"};
+    "rev",
+    "run"};
 
 enum class HillOwner : int
 {
@@ -164,6 +165,7 @@ bool multi_is_team_game_type();
 bool gt_is_koth();
 bool gt_is_dc();
 bool gt_is_rev();
+bool gt_is_run();
 bool rev_all_points_permalocked();
 int multi_koth_get_red_team_score();
 int multi_koth_get_blue_team_score();

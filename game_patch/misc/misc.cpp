@@ -657,43 +657,48 @@ CodeInjection game_set_file_paths_injection{
 CallHook level_init_pre_console_output_hook{
     0x00435ABB,
     []() {
-        // server delayed gametype swap
-        if (rf::is_dedicated_server && g_dedicated_launched_from_ads) {
-            apply_game_type_for_current_level();
-            rf::netgame.type = get_upcoming_game_type();
-            clear_explicit_upcoming_game_type_request();
-        }
-
-        // local client delayed gametype swap
-        if (!rf::is_server) {
-            if (g_local_pending_game_type.has_value()) {
-                rf::netgame.type = g_local_pending_game_type.value();
-
-                if (g_local_pending_win_condition.has_value() && get_af_server_info_mutable().has_value()) {
-                    auto server_info = get_af_server_info_mutable().value();
-                    switch (rf::netgame.type) {
-                        case rf::NetGameType::NG_TYPE_CTF:
-                            rf::netgame.max_captures = g_local_pending_win_condition.value();
-                            break;
-                        case rf::NetGameType::NG_TYPE_KOTH:
-                            server_info.koth_score_limit = g_local_pending_win_condition.value();
-                        case rf::NetGameType::NG_TYPE_DC:
-                            server_info.dc_score_limit = g_local_pending_win_condition.value();
-                            break;
-                        case rf::NetGameType::NG_TYPE_REV:
-                            break;
-                        default:
-                            rf::netgame.max_kills = g_local_pending_win_condition.value();
-                            break;
-                    }
-                }
+        if (rf::is_multi) {
+            // server delayed gametype swap
+            if (rf::is_dedicated_server && g_dedicated_launched_from_ads) {
+                apply_game_type_for_current_level();
+                rf::netgame.type = get_upcoming_game_type();
+                clear_explicit_upcoming_game_type_request();
             }
 
-            reset_local_pending_game_type();
-        }
+            // local client delayed gametype swap
+            if (!rf::is_server) {
+                if (g_local_pending_game_type.has_value()) {
+                    rf::netgame.type = g_local_pending_game_type.value();
 
-        rf::console::print("-- Level Initializing: {} ({}) --", rf::level_filename_to_load, get_game_type_string(rf::netgame.type));
-        apply_rules_for_current_level();
+                    if (g_local_pending_win_condition.has_value() && get_af_server_info_mutable().has_value()) {
+                        auto server_info = get_af_server_info_mutable().value();
+                        switch (rf::netgame.type) {
+                            case rf::NetGameType::NG_TYPE_CTF:
+                                rf::netgame.max_captures = g_local_pending_win_condition.value();
+                                break;
+                            case rf::NetGameType::NG_TYPE_KOTH:
+                                server_info.koth_score_limit = g_local_pending_win_condition.value();
+                            case rf::NetGameType::NG_TYPE_DC:
+                                server_info.dc_score_limit = g_local_pending_win_condition.value();
+                                break;
+                            case rf::NetGameType::NG_TYPE_REV:
+                                break;
+                            default:
+                                rf::netgame.max_kills = g_local_pending_win_condition.value();
+                                break;
+                        }
+                    }
+                }
+
+                reset_local_pending_game_type();
+            }
+
+            rf::console::print("-- Level Initializing: {} ({}) --", rf::level_filename_to_load, get_game_type_string(rf::netgame.type));
+            apply_rules_for_current_level();
+        }
+        else { // SP
+            rf::console::print("-- Level Initializing: {} --", rf::level_filename_to_load);
+        }
     },
 };
 

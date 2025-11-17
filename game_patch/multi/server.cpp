@@ -23,6 +23,7 @@
 #include "alpine_packets.h"
 #include "multi.h"
 #include "../os/console.h"
+#include "../hud/hud.h"
 #include "../misc/player.h"
 #include "../main/main.h"
 #include "../misc/achievements.h"
@@ -735,6 +736,9 @@ std::optional<rf::NetGameType> resolve_gametype_from_name(std::string_view gamet
     if (string_equals_ignore_case(gametype_name, "rev")) {
         return rf::NetGameType::NG_TYPE_REV;
     }
+    if (string_equals_ignore_case(gametype_name, "run")) {
+        return rf::NetGameType::NG_TYPE_RUN;
+    }
 
     return std::nullopt;
 }
@@ -1141,6 +1145,9 @@ FunHook<bool (const char*, int)> multi_is_level_matching_game_type_hook{
         }
         else if (ng_type == rf::NetGameType::NG_TYPE_REV) {
             return string_starts_with_ignore_case(filename, "rev");
+        }
+        else if (ng_type == rf::NetGameType::NG_TYPE_RUN) {
+            return string_contains_ignore_case(filename, "run");
         }
         return string_starts_with_ignore_case(filename, "dm") || string_starts_with_ignore_case(filename, "pdm");
     },
@@ -1859,10 +1866,13 @@ void server_reliable_socket_ready(rf::Player* player)
 CodeInjection multi_level_init_injection{
     0x0046E450,
     [](auto& regs) {
-        if (g_alpine_server_config.dynamic_rotation && rf::netgame.current_level_index ==
-            rf::netgame.levels.size() - 1 && rf::netgame.levels.size() > 1) {
+        if (rf::is_server) {
+            af_send_server_info_packet_to_all();
+            if (g_alpine_server_config.dynamic_rotation &&
+                rf::netgame.current_level_index == rf::netgame.levels.size() - 1 && rf::netgame.levels.size() > 1) {
                 // if this is the last level in the list and dynamic rotation is on, shuffle
                 shuffle_level_array();
+            }
         }
     },
 };
@@ -1925,7 +1935,7 @@ bool round_is_tied(rf::NetGameType game_type)
     case rf::NG_TYPE_KOTH: {
         return multi_koth_get_red_team_score() == multi_koth_get_blue_team_score();
     }
-    default: // REV can't be tied
+    default: // other modes (e.g. REV and RUN) can't be tied
         return false;
     }
 }
@@ -2006,7 +2016,7 @@ FunHook<void()> multi_check_for_round_end_hook{
                 }
                 break;
             }
-            default:
+            default: // other modes (e.g. RUN) have no round end condition except timer
                 break;
             }
         }
@@ -2737,12 +2747,12 @@ bool server_allow_disable_screenshake()
 
 bool server_no_player_collide()
 {
-    return g_alpine_server_config.alpine_restricted_config.no_player_collide;
+    return g_alpine_server_config_active_rules.no_player_collide;
 }
 
 bool server_location_pinging()
 {
-    return g_alpine_server_config.alpine_restricted_config.clients_require_alpine && g_alpine_server_config.alpine_restricted_config.location_pinging;
+    return g_alpine_server_config_active_rules.location_pinging;
 }
 
 bool server_delayed_spawns()
@@ -2768,6 +2778,22 @@ bool server_allow_unlimited_fps()
 bool server_gaussian_spread()
 {
     return g_alpine_server_config.gaussian_spread;
+}
+
+std::pair<bool, int> server_features_require_alpine_client()
+{
+    bool requires_alpine = false;
+    int min_minor_version = 0;
+
+    if (static_cast<int>(g_alpine_server_config_active_rules.game_type) >= 3 ||
+        g_alpine_server_config_active_rules.spawn_loadout.loadouts_active ||
+        g_alpine_server_config_active_rules.no_player_collide ||
+        g_alpine_server_config_active_rules.location_pinging) {
+        requires_alpine = true;
+        min_minor_version = std::max(min_minor_version, 2);
+    }
+
+    return {requires_alpine, min_minor_version};
 }
 
 bool server_weapon_items_give_full_ammo()
@@ -2797,7 +2823,8 @@ bool server_is_alpine_only_enabled()
 
 bool server_rejects_legacy_clients()
 {
-    return g_alpine_server_config.alpine_restricted_config.reject_non_alpine_clients;
+    const auto [auto_require_alpine, _] = server_features_require_alpine_client();
+    return g_alpine_server_config.alpine_restricted_config.reject_non_alpine_clients || auto_require_alpine;
 }
 
 bool server_enforces_click_limiter()
@@ -2807,7 +2834,7 @@ bool server_enforces_click_limiter()
 
 bool server_enforces_no_player_collide()
 {
-    return g_alpine_server_config.alpine_restricted_config.no_player_collide;
+    return g_alpine_server_config_active_rules.no_player_collide;
 }
 
 bool server_has_damage_notifications()
@@ -2817,6 +2844,7 @@ bool server_has_damage_notifications()
 
 const AFGameInfoFlags& server_get_game_info_flags()
 {
+    initialize_game_info_server_flags();
     return g_game_info_server_flags;
 }
 

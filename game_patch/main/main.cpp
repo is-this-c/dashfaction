@@ -203,6 +203,10 @@ FunHook<void(bool)> level_init_post_hook{
                 toggle_chat_menu(ChatMenuType::None);
                 player_multi_level_post_init();
                 multi_hud_level_init();
+                // listen server host spawns before this init, so we need to run on_local_spawn for them again
+                if (rf::is_server) {
+                    multi_hud_on_local_spawn();
+                }
             }
 
             if (g_alpine_game_config.try_disable_textures) {

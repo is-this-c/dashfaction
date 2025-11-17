@@ -273,12 +273,6 @@ void parse_alpine_locking(rf::Parser& parser)
         parse_boolean_option(parser, "+Reject Legacy Clients:",
                              g_alpine_server_config.alpine_restricted_config.reject_non_alpine_clients,
                              "+Reject Legacy Clients");
-        parse_boolean_option(parser,
-                             "+No Player Collide:", g_alpine_server_config.alpine_restricted_config.no_player_collide,
-                             "+No Player Collide");
-        parse_boolean_option(parser,
-                             "+Location Pinging:", g_alpine_server_config.alpine_restricted_config.location_pinging,
-                             "+Location Pinging");
         parse_vote_config("+Match Mode", g_alpine_server_config.alpine_restricted_config.vote_match, parser);
     }
 }

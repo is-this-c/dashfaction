@@ -12,6 +12,7 @@
 #include "multi.h"
 #include "network.h"
 #include "server_internal.h"
+#include "server.h"
 #include "../hud/hud_world.h"
 #include "alpine_packets.h"
 #include "../misc/player.h"
@@ -137,8 +138,12 @@ static void af_process_ping_location_req_packet(const void* data, size_t len, co
     }
 
     // ignore ping_location_req packets if location pinging is configured off
-    if (!(g_alpine_server_config.alpine_restricted_config.clients_require_alpine &&
-          g_alpine_server_config.alpine_restricted_config.location_pinging)) {
+    if (!server_location_pinging()) {
+        return;
+    }
+
+    // ignore ping_location_req packets unless we're in a team mode or RUN
+    if (!multi_is_team_game_type() && !gt_is_run()) {
         return;
     }
 
@@ -184,7 +189,8 @@ static void af_process_ping_location_req_packet(const void* data, size_t len, co
         ping_location_req_packet.pos.z
     };
 
-    af_send_ping_location_packet_to_team(&pos, player->net_data->player_id, player->team);
+    gt_is_run() ? af_send_ping_location_packet_to_all(&pos, player->net_data->player_id)
+                : af_send_ping_location_packet_to_team(&pos, player->net_data->player_id, player->team);
 }
 
 void af_send_ping_location_packet(rf::Vector3* pos, uint8_t player_id, rf::Player* player)
@@ -219,6 +225,19 @@ void af_send_ping_location_packet_to_team(rf::Vector3* pos, uint8_t player_id, r
         if (&player == rf::local_player) continue;  // Skip the local player
         if (player.net_data->player_id == player_id) continue; // Skip the sender
         if (player.team != team) continue; // Skip if not on the correct team
+
+        af_send_ping_location_packet(pos, player_id, &player);
+    }
+}
+
+void af_send_ping_location_packet_to_all(rf::Vector3* pos, uint8_t player_id)
+{
+    SinglyLinkedList<rf::Player> linked_player_list{rf::player_list};
+
+    for (auto& player : linked_player_list) {
+        if (!&player) continue;  // Skip invalid player
+        if (&player == rf::local_player) continue;  // Skip the local player
+        if (player.net_data->player_id == player_id) continue; // Skip the sender
 
         af_send_ping_location_packet(pos, player_id, &player);
     }
@@ -1065,7 +1084,7 @@ static void build_af_server_info_packet(af_server_info_packet& pkt)
         af |= af_server_info_flags::SIF_ALLOW_LIGHTMAPS_ONLY;
     if (g_alpine_server_config.allow_disable_screenshake)
         af |= af_server_info_flags::SIF_ALLOW_NO_SCREENSHAKE;
-    if (g_alpine_server_config.alpine_restricted_config.no_player_collide)
+    if (g_alpine_server_config_active_rules.no_player_collide)
         af |= af_server_info_flags::SIF_NO_PLAYER_COLLIDE;
     if (g_alpine_server_config.allow_disable_muzzle_flash)
         af |= af_server_info_flags::SIF_ALLOW_NO_MUZZLE_FLASH_LIGHT;
@@ -1075,7 +1094,7 @@ static void build_af_server_info_packet(af_server_info_packet& pkt)
         af |= af_server_info_flags::SIF_ALLOW_UNLIMITED_FPS;
     if (g_alpine_server_config.gaussian_spread)
         af |= af_server_info_flags::SIF_GAUSSIAN_SPREAD;
-    if (g_alpine_server_config.alpine_restricted_config.location_pinging)
+    if (g_alpine_server_config_active_rules.location_pinging)
         af |= af_server_info_flags::SIF_LOCATION_PINGING;
     if (g_alpine_server_config_active_rules.spawn_delay.enabled)
         af |= af_server_info_flags::SIF_DELAYED_SPAWNS;
@@ -1103,6 +1122,7 @@ static void build_af_server_info_packet(af_server_info_packet& pkt)
         case rf::NetGameType::NG_TYPE_DC:
             pkt.win_condition = static_cast<uint32_t>(g_alpine_server_config_active_rules.dc_score_limit);
             break;
+        case rf::NetGameType::NG_TYPE_RUN:
         case rf::NetGameType::NG_TYPE_REV:
             pkt.win_condition = static_cast<uint32_t>(0); // no wincon necessary
             break;
@@ -1180,7 +1200,7 @@ static void af_process_server_info_packet(const void* data, size_t len, const rf
         return; // server info is missing, how did you get this packet?
     }
 
-    auto server_info = get_af_server_info_mutable().value();
+    auto& server_info = get_af_server_info_mutable().value();
 
     auto game_type = static_cast<rf::NetGameType>(pkt.game_type);
 
@@ -1198,6 +1218,7 @@ static void af_process_server_info_packet(const void* data, size_t len, const rf
             case rf::NetGameType::NG_TYPE_DC:
                 server_info.dc_score_limit = static_cast<int>(pkt.win_condition);
                 break;
+            case rf::NetGameType::NG_TYPE_RUN:
             case rf::NetGameType::NG_TYPE_REV:
                 break; // no wincon necessary
             default:

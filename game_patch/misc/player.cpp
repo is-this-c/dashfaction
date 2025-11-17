@@ -20,6 +20,7 @@
 #include "../sound/sound.h"
 #include "../input/input.h"
 #include "../multi/multi.h"
+#include "../multi/gametype.h"
 #include "../multi/server_internal.h"
 #include "../hud/multi_spectate.h"
 #include "../hud/hud.h"
@@ -222,6 +223,7 @@ FunHook<rf::Entity*(rf::Player*, int, const rf::Vector3*, const rf::Matrix3*, in
             rf::Matrix3 cam_orient = rf::camera_get_orient(pp->cam);
             rf::snd_update_sounds(cam_pos, rf::zero_vector, cam_orient);
             reset_local_delayed_spawn();
+            multi_hud_on_local_spawn();
         }
         return ep;
     },
@@ -510,7 +512,7 @@ void ping_looked_at_location() {
         return;
     }
 
-    if (rf::multi_get_game_type() == rf::NetGameType::NG_TYPE_DM) {
+    if (!multi_is_team_game_type() && !gt_is_run()) {
         rf::String msg{"Location pinging is only available in team gametypes"};
         rf::String prefix;
         rf::multi_chat_print(msg, rf::ChatMsgColor::white_white, prefix);
