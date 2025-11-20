@@ -1453,27 +1453,28 @@ void af_send_server_cfg(rf::Player* player) {
     }
 }
 
-af_server_msg_packet& build_automated_chat_msg_packet(
-    const std::string_view msg,
-    std::array<uint8_t, rf::max_packet_size>& buf
+union af_server_msg_packet_buf {
+    af_server_msg_packet packet;
+    std::array<uint8_t, rf::max_packet_size> buf;
+};
+
+af_server_msg_packet_buf build_automated_chat_msg_packet(
+    const std::string_view msg
 ) {
     constexpr size_t max_len = rf::max_packet_size - sizeof(af_server_msg_packet);
     const size_t len = std::clamp(msg.size(), 0uz, max_len);
 
-    af_server_msg_packet server_msg_packet;
-    server_msg_packet.header.type = static_cast<uint8_t>(af_packet_type::af_server_msg);
-    server_msg_packet.header.size = static_cast<uint16_t>(
-        sizeof(server_msg_packet)
-            - sizeof(server_msg_packet.header)
+    af_server_msg_packet_buf buf{};
+    buf.packet.header.type = static_cast<uint8_t>(af_packet_type::af_server_msg);
+    buf.packet.header.size = static_cast<uint16_t>(
+        sizeof(buf.packet)
+            - sizeof(buf.packet.header)
             + len
     );
-    server_msg_packet.type = static_cast<uint8_t>(AF_SERVER_MSG_TYPE_AUTOMATED_CHAT);
+    buf.packet.type = static_cast<uint8_t>(AF_SERVER_MSG_TYPE_AUTOMATED_CHAT);
+    std::memcpy(buf.packet.data, msg.data(), len);
 
-    std::memcpy(buf.data(), &server_msg_packet, sizeof(server_msg_packet));
-    uint8_t* ptr = buf.data() + sizeof(server_msg_packet);
-    std::memcpy(ptr, msg.data(), len);
-
-    return *reinterpret_cast<af_server_msg_packet*>(buf.data());
+    return buf;
 }
 
 void af_broadcast_automated_chat_msg(const std::string_view msg) {
@@ -1483,8 +1484,7 @@ void af_broadcast_automated_chat_msg(const std::string_view msg) {
 
     rf::console::print("Server: {}", msg);
 
-    std::array<uint8_t, rf::max_packet_size> buf{}; 
-    af_server_msg_packet& server_msg_packet = build_automated_chat_msg_packet(msg, buf);
+    const af_server_msg_packet_buf buf = build_automated_chat_msg_packet(msg);
 
     for (rf::Player& player : SinglyLinkedList{rf::player_list}) {
         if (&player == rf::local_player) {
@@ -1494,8 +1494,8 @@ void af_broadcast_automated_chat_msg(const std::string_view msg) {
         if (is_player_minimum_af_client_version(&player, 1, 2)) {
             rf::multi_io_send_reliable(
                 &player,
-                buf.data(),
-                server_msg_packet.header.size + sizeof(server_msg_packet.header),
+                &buf.packet,
+                buf.packet.header.size + sizeof(buf.packet.header),
                 0
             );
         } else {
@@ -1510,13 +1510,12 @@ void af_send_automated_chat_msg(const std::string_view msg, rf::Player* player) 
     }
 
     if (is_player_minimum_af_client_version(player, 1, 2)) {
-        std::array<uint8_t, rf::max_packet_size> buf{}; 
-        af_server_msg_packet& server_msg_packet = build_automated_chat_msg_packet(msg, buf);
+        const af_server_msg_packet_buf buf = build_automated_chat_msg_packet(msg);
 
         rf::multi_io_send_reliable(
             player,
-            buf.data(),
-            server_msg_packet.header.size + sizeof(server_msg_packet.header),
+            &buf.packet,
+            buf.packet.header.size + sizeof(buf.packet.header),
             0
         );
     } else {
