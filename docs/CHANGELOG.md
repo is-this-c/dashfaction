@@ -97,6 +97,8 @@ Version 1.2.0 (Willow): Not yet released
 - Add `Inspect weapon` control bind
 
 [@is-this-c](https://github.com/is-this-c)
+- Add `ui_simple_server_chat_messages` command to display automated server chat messages without `Server: `
+- Color automated server chat messages with a gold name instead of a red name
 - Add `key_quick_exit` command to restore keyboard shortcut `Shift+Esc` to quit out of Red Faction
 - Support `Alt+F4` or pressing X on window to quit out of Red Faction
 - Add `ui_remote_server_cfg` command and a configurable control to display a remote server's config
