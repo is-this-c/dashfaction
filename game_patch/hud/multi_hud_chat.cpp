@@ -90,8 +90,7 @@ void multi_hud_render_chat()
         if (msg.color_id == 0 || msg.color_id == 1) {
             if (msg.color_id == 0) {
                 rf::gr::set_color(227, 48, 47, text_alpha);
-            }
-            else {
+            } else {
                 rf::gr::set_color(117, 117, 254, text_alpha);
             }
             rf::gr::string(x, y, msg.name.c_str(), chatbox_font);

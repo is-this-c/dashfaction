@@ -340,14 +340,14 @@ struct VoteMatch : public Vote
         if (preset_alias) {
             auto alias_it = g_alpine_server_config.rules_preset_aliases.find(*preset_alias);
             if (alias_it == g_alpine_server_config.rules_preset_aliases.end()) {
-                auto msg = std::format("\\xA6 Cannot start vote: rules preset '{}' is not defined!", *preset_alias);
+                auto msg = std::format("\xA6 Cannot start vote: rules preset '{}' is not defined!", *preset_alias);
                 af_send_automated_chat_msg(msg, source);
                 return false;
             }
 
             auto preset_result = load_rules_preset_alias(*preset_alias);
             if (!preset_result) {
-                auto msg = std::format("\\xA6 Cannot start vote: failed to load rules preset '{}'", *preset_alias);
+                auto msg = std::format("\xA6 Cannot start vote: failed to load rules preset '{}'", *preset_alias);
                 af_send_automated_chat_msg(msg, source);
                 return false;
             }
