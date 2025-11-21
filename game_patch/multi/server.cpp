@@ -1455,7 +1455,7 @@ void toggle_ready_status(rf::Player* player)
     }
 
     if (get_player_additional_data(player).client_version != ClientVersion::alpine_faction) {
-        send_chat_line_packet("\xA6 Only Alpine Faction clients can ready for matches. Learn more: alpinefaction.com", player);
+        af_send_automated_chat_msg("\xA6 Only Alpine Faction clients can ready for matches. Learn more: alpinefaction.com", player);
         return;
     }
 
@@ -1471,7 +1471,7 @@ void toggle_ready_status(rf::Player* player)
 void set_ready_status(rf::Player* player, bool is_ready)
 {
     if (get_player_additional_data(player).client_version != ClientVersion::alpine_faction) {
-        send_chat_line_packet("\xA6 Only Alpine Faction clients can ready for matches. Learn more: alpinefaction.com", player);
+        af_send_automated_chat_msg("\xA6 Only Alpine Faction clients can ready for matches. Learn more: alpinefaction.com", player);
         return;
     }
 
@@ -1678,7 +1678,7 @@ bool check_can_player_spawn(rf::Player* player)
     case AlpineRestrictVerdict::ok:
         return true;
     case AlpineRestrictVerdict::need_alpine:
-        send_chat_line_packet("\xA6 You must upgrade to Alpine Faction to play here. Learn more at alpinefaction.com", player);
+        af_send_automated_chat_msg("\xA6 You must upgrade to Alpine Faction to play here. Learn more at alpinefaction.com", player);
         return false;
     case AlpineRestrictVerdict::need_release:
         af_send_automated_chat_msg("\xA6 This server requires an official Alpine Faction build. Get it at alpinefaction.com", player);
@@ -1854,7 +1854,7 @@ void server_reliable_socket_ready(rf::Player* player)
         if (data.client_version != ClientVersion::alpine_faction) {
             auto msg = std::format(
                 "\xA6 Have you heard of Alpine Faction? It's a new patch with lots of new and modern features! This server encourages you to upgrade for the best player experience. Learn more at alpinefaction.com");
-            send_chat_line_packet(msg, player);
+            af_send_automated_chat_msg(msg, player);
         }
         else if (VERSION_TYPE == VERSION_TYPE_RELEASE && (pm < VERSION_MAJOR || (pm == VERSION_MAJOR && pn < VERSION_MINOR))) {
             auto msg = std::format("\xA6 A new version of Alpine Faction is available! Learn more at alpinefaction.com");
