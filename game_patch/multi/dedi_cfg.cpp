@@ -660,17 +660,17 @@ static AlpineServerConfigRules apply_rules_presets_and_overrides(
             resolved_path = fs::weakly_canonical(resolved_path);
         }
         catch (const fs::filesystem_error& err) {
-            rf::console::print("  [WARN] failed to canonicalize rules preset '{}' in {}: {}\n", resolved_path.string(), context, err.what()); resolved_path = fs::absolute(resolved_path);
+            rf::console::print("  [WARN] failed to canonicalize rules preset '{}' in {}: {}\n", resolved_path.generic_string(), context, err.what()); resolved_path = fs::absolute(resolved_path);
         }
 
         if (std::find(preset_stack->begin(), preset_stack->end(), resolved_path) != preset_stack->end()) {
-            rf::console::print("  [ERROR] rules preset cycle detected at '{}' in {}\n", resolved_path.string(), context);
+            rf::console::print("  [ERROR] rules preset cycle detected at '{}' in {}\n", resolved_path.generic_string(), context);
             return;
         }
 
         preset_stack->push_back(resolved_path);
         try {
-            toml::table preset_root = toml::parse_file(resolved_path.string());
+            toml::table preset_root = toml::parse_file(resolved_path.generic_string());
             const toml::table* preset_rules = nullptr;
 
             if (auto tbl = preset_root["rules"].as_table())
@@ -678,7 +678,7 @@ static AlpineServerConfigRules apply_rules_presets_and_overrides(
             else
                 preset_rules = &preset_root;
 
-            std::string next_context = std::format("rules preset '{}'", resolved_path.string());
+            std::string next_context = std::format("rules preset '{}'", resolved_path.generic_string());
             rules = apply_rules_presets_and_overrides(*preset_rules, resolved_path.parent_path(), rules, next_context, preset_aliases, preset_stack, applied_presets);
             if (applied_presets) {
                 if (used_alias)
@@ -688,7 +688,7 @@ static AlpineServerConfigRules apply_rules_presets_and_overrides(
             }
         }
         catch (const toml::parse_error& err) {
-            rf::console::print("  [ERROR] failed to parse rules preset '{}' in {}: {}\n", resolved_path.string(), context, err.description());
+            rf::console::print("  [ERROR] failed to parse rules preset '{}' in {}: {}\n", resolved_path.generic_string(), context, err.description());
         }
         preset_stack->pop_back();
     };
@@ -730,14 +730,14 @@ std::optional<ManualRulesOverride> load_rules_preset_alias(std::string_view pres
         resolved_path = fs::weakly_canonical(resolved_path);
     }
     catch (const fs::filesystem_error& err) {
-        rf::console::print("  [WARN] failed to canonicalize rules preset alias '{}' at '{}': {}\n", preset_name, resolved_path.string(), err.what());
+        rf::console::print("  [WARN] failed to canonicalize rules preset alias '{}' at '{}': {}\n", preset_name, resolved_path.generic_string(), err.what());
         resolved_path = fs::absolute(resolved_path);
     }
 
     std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> applied_presets;
 
     try {
-        toml::table preset_root = toml::parse_file(resolved_path.string());
+        toml::table preset_root = toml::parse_file(resolved_path.generic_string());
         const toml::table* preset_rules = nullptr;
 
         if (auto tbl = preset_root["rules"].as_table())
@@ -758,7 +758,7 @@ std::optional<ManualRulesOverride> load_rules_preset_alias(std::string_view pres
     }
     catch (const toml::parse_error& err) {
         rf::console::print("  [ERROR] failed to parse rules preset alias '{}' at '{}': {}\n",
-            preset_name, resolved_path.string(), err.description());
+            preset_name, resolved_path.generic_string(), err.description());
         return std::nullopt;
     }
 }
@@ -975,7 +975,7 @@ static void apply_config_table_in_order(
     AlpineServerConfig& cfg, const toml::table& tbl, const fs::path& base_dir, std::vector<fs::path>& load_stack, int depth, ParsePass pass)
 {
     if (depth > 16) {
-        rf::console::print("  [ERROR] include depth exceeded under {}\n", base_dir.string());
+        rf::console::print("  [ERROR] include depth exceeded under {}\n", base_dir.generic_string());
         return;
     }
 
@@ -1021,18 +1021,18 @@ static void apply_config_table_in_order(
             auto load_one = [&](const std::string& inc) {
                 fs::path child = fs::weakly_canonical(base_dir / inc);
                 if (std::find(load_stack.begin(), load_stack.end(), child) != load_stack.end()) {
-                    rf::console::print("  [ERROR] include cycle detected at {}\n", child.string());
+                    rf::console::print("  [ERROR] include cycle detected at {}\n", child.generic_string());
                     return;
                 }
                 try {
-                    toml::table child_tbl = toml::parse_file(child.string());
-                    rf::console::print("  Parsing include {} for {} pass\n", child.string(), pass == ParsePass::Core ? "config" : "level");
+                    toml::table child_tbl = toml::parse_file(child.generic_string());
+                    rf::console::print("  Parsing include {} for {} pass\n", child.generic_string(), pass == ParsePass::Core ? "config" : "level");
                     load_stack.push_back(child);
                     apply_config_table_in_order(cfg, child_tbl, child.parent_path(), load_stack, depth + 1, pass);
                     load_stack.pop_back();
                 }
                 catch (const toml::parse_error& err) {
-                    rf::console::print("  [ERROR] failed to parse {}: {}\n", child.string(), err.description());
+                    rf::console::print("  [ERROR] failed to parse {}: {}\n", child.generic_string(), err.description());
                 }
             };
 
@@ -1573,8 +1573,8 @@ void print_rules_with_presets(std::string& output, const AlpineServerConfigRules
         std::format_to(iter, "  Rules presets applied:\n");
         for (const auto& [preset_path, preset_alias] : preset_paths) {
             const std::string path = sanitize
-                ? preset_path.filename().string()
-                : preset_path.string();
+                ? preset_path.filename().generic_string()
+                : preset_path.generic_string();
             if (preset_alias) {
                 std::format_to(iter, "    {} (alias '{}')\n", path, preset_alias.value());
             } else {
@@ -1687,9 +1687,9 @@ void print_alpine_dedicated_server_config_info(std::string& output, bool verbose
         std::format_to(iter, "\n---- Rules preset alias mappings ----\n");
         for (const auto& [alias, path] : cfg.rules_preset_aliases) {
             if (sanitize) {
-                std::format_to(iter, "  {} -> {}\n", alias, path.filename().string());
+                std::format_to(iter, "  {} -> {}\n", alias, path.filename().generic_string());
             } else {
-                std::format_to(iter, "  {} -> {}\n", alias, path.string());
+                std::format_to(iter, "  {} -> {}\n", alias, path.generic_string());
             }
         }
     }

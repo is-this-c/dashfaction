@@ -133,10 +133,6 @@ CodeInjection multi_hud_add_chat_line_max_width_injection{
 
 void multi_hud_render_chat_inputbox(rf::String::Pod label_pod, rf::String::Pod msg_pod)
 {
-    if (g_remote_server_cfg_popup.is_active()) {
-        return;
-    }
-
     // Note: POD has to be used here because of differences between compilers ABI
     rf::String label{label_pod};
     rf::String msg{msg_pod};

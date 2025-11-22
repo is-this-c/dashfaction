@@ -1237,10 +1237,10 @@ void RemoteServerCfgPopup::render() {
             * (new_line_height + new_sep_thickness)
             + new_sep_thickness;
 
-        float ratio_current = old_total_height > 0
+        const float ratio_current = old_total_height > 0
             ? m_scroll.current / static_cast<float>(old_total_height)
             : 0.f;
-        float ratio_target = old_total_height > 0
+        const float ratio_target = old_total_height > 0
             ? m_scroll.target / static_cast<float>(old_total_height)
             : 0.f;
 
@@ -1378,12 +1378,12 @@ void RemoteServerCfgPopup::render() {
     const std::string_view separator_text = " | ";
     const std::string_view outdated_text = "OUTDATED";
 
-    static const auto [base_w, base_h] = rf::gr::get_string_size(base_text, label_font_id);
+    const auto [base_w, base_h] = rf::gr::get_string_size(base_text, label_font_id);
 
     int total_w = base_w;
     if (m_cfg_changed) {
-        static const auto [sep_w, sep_h] = rf::gr::get_string_size(separator_text, label_font_id);
-        static const auto [out_w, out_h] = rf::gr::get_string_size(outdated_text, label_font_id);
+        const auto [sep_w, sep_h] = rf::gr::get_string_size(separator_text, label_font_id);
+        const auto [out_w, out_h] = rf::gr::get_string_size(outdated_text, label_font_id);
         total_w += sep_w + out_w;
     }
 
