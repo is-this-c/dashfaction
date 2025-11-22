@@ -1582,11 +1582,11 @@ void RemoteServerCfgPopup::render() {
     );
 }
 
-FunHook<void()> hus_msg_render_hook{
+FunHook<void()> hud_msg_render_hook{
     0x004382D0,
     [] {
         if (!g_remote_server_cfg_popup.is_active()) {
-            hus_msg_render_hook.call_target();
+            hud_msg_render_hook.call_target();
         }
     },
 };
@@ -2050,7 +2050,7 @@ ConsoleCommand2 ui_simple_server_chat_messages_cmd{
 
 void multi_hud_apply_patches()
 {
-    hus_msg_render_hook.install();
+    hud_msg_render_hook.install();
     multi_hud_render_patch.install();
     AsmWriter{0x00477790}.jmp(multi_hud_render_team_scores);
     multi_hud_render_team_scores_new_gamemodes_patch.install();
