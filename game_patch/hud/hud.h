@@ -27,7 +27,7 @@ void draw_hud_ready_notification(bool draw);
 void set_local_pre_match_active(bool set_active);
 void multi_hud_level_init();
 void multi_hud_on_local_spawn();
-void multi_hud_reset_run_gt_timer();
+void multi_hud_reset_run_gt_timer(bool triggered_by_respawn_key);
 void toggle_chat_menu(ChatMenuType state);
 bool get_chat_menu_is_active();
 void hud_render_draw_chat_menu();

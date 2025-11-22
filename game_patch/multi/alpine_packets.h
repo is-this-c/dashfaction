@@ -240,6 +240,8 @@ void af_send_spectate_notify_packet(rf::Player* player, const rf::Player* specta
 void af_process_spectate_notify_packet(const void* data, size_t len, const rf::NetAddr&);
 void af_send_server_cfg(rf::Player* player);
 void af_process_server_msg_packet(const void* data, size_t len, const rf::NetAddr&);
+void af_broadcast_automated_chat_msg(std::string_view msg);
+void af_send_automated_chat_msg(std::string_view msg, rf::Player* player);
 
 // client requests
 void af_send_handicap_request(uint8_t amount);

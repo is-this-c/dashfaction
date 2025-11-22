@@ -197,6 +197,7 @@ namespace rf
     static auto& event_lookup_persistent_goal_event = addr_as_ref<PersistentGoalEvent*(const char* name)>(0x004B8680);
     static auto& event_list = addr_as_ref<VArray<Event*>>(0x00856470);
     static auto& event_type_forwards_messages = addr_as_ref<bool(int event_type)>(0x004B8C40);
+    static auto& event_activate_from_trigger = addr_as_ref<void(int event_handle, int trigger_handle, int triggered_by_handle)>(0x004B6760);
     
     static auto& Event__process = addr_as_ref<void __fastcall(rf::Event*)>(0x004B8CE0);
 

@@ -267,13 +267,9 @@ void parse_alpine_locking(rf::Parser& parser)
         parse_boolean_option(parser, "+Require Official Build:",
                              g_alpine_server_config.alpine_restricted_config.alpine_require_release_build,
                              "+Require Official Build");
-        parse_boolean_option(parser, "+Enforce Server Version Minimum:",
-                             g_alpine_server_config.alpine_restricted_config.alpine_server_version_enforce_min,
-            "+Enforce Server Version Minimum");
         parse_boolean_option(parser, "+Reject Legacy Clients:",
                              g_alpine_server_config.alpine_restricted_config.reject_non_alpine_clients,
                              "+Reject Legacy Clients");
-        parse_vote_config("+Match Mode", g_alpine_server_config.alpine_restricted_config.vote_match, parser);
     }
 }
 

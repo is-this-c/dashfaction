@@ -95,8 +95,15 @@ Version 1.2.0 (Willow): Not yet released
 - Add `dbg_numgeos` debug command to count number of geo craters in current level
 - Add legacy mover setting to level properties window in level editor
 - Add `Inspect weapon` control bind
+- Add `cl_locationpings` command to toggle location pinging functionality
+- Fit scoreboard on screen by splitting into columns when server has > 16 players
+- Deprecate `enforce_min_server_version` Alpine restrict setting
+- Add `sv_restrict_status` command to check status of client restrictions on the current map and ruleset
+- Add tracking of `Loads` to scoreboard in RUN game type
 
 [@is-this-c](https://github.com/is-this-c)
+- Add `ui_simple_server_chat_messages` command to display automated server chat messages without `Server: `
+- Color automated server chat messages with a gold name instead of a red name
 - Add `key_quick_exit` command to restore keyboard shortcut `Shift+Esc` to quit out of Red Faction
 - Support `Alt+F4` or pressing X on a window to quit out of Red Faction
 - Add a configurable control to display a remote server's config
@@ -108,7 +115,7 @@ Version 1.2.0 (Willow): Not yet released
 - Fix very niche case where armor values were displayed differently when Big HUD was enabled
 - Fix Direct3D 11 renderer not properly rendering detail brushes in skyboxes
 - Fix super powerups applying in SP in non-Alpine levels
-- Fix `Cyclic_Timer` event activating twice on initial activation (unless `Legacy Cyclic_Timers` is on)
+- Fix `Cyclic_Timer` event activating twice on initial activation (subject to legacy switch)
 - Fix broken rendering of particle emitter 23616 on community level `dm-birthday.rfl`
 - Fix broken rendering of particle emitter 14313 on community level `DM-RFU2-Halloween.rfl`
 - Fix `NAME has been kicked` not being printed to server console when players kicked due to inactivity
@@ -131,10 +138,14 @@ Version 1.2.0 (Willow): Not yet released
 - Fix skybox rendering issues with Direct3D 11 renderer on community level `dm-rfu-friday.rfl`
 - Fix MP timer alert sounds not playing if already played once this level (e.g. if level is extended)
 - Fix rare crash on game shutdown when certain mods are loaded
-- Fix slow-moving translating movers not working as expected (unless legacy switch is on)
-- Fix accelerating/decelerating rotating movers not working as expected (unless legacy switch is on)
-- Fix `Ping Pong Infinite`, `Loop Once`, and `Loop Infinite` modes for rotating movers (unless legacy switch is on)
-- Fix strange behaviour of mover travel times when accel + decel is greater than total travel time (unless fix switch is off)
+- Fix low velocity translating movers not working as expected (subject to legacy switch)
+- Fix accelerating/decelerating rotating movers not working as expected (subject to legacy switch)
+- Fix `Ping Pong Infinite`, `Loop Once`, and `Loop Infinite` modes for rotating movers (subject to legacy switch)
+- Fix `Lift` mode not working for translating movers (subject to legacy switch)
+- Fix strange behaviour of translating movers when accel + decel > total travel time (subject to legacy switch)
+- Fix crash when `Force Orient` flag is used with translating movers
+- Fix `Force Orient` mover flag not working (subject to legacy switch)
+- Fix rare crash when starting to spectate a player immediately when they land on a surface
 
 [@is-this-c](https://github.com/is-this-c)
 - Fix `PgUp`, `PgDown`, `End`, and `Home` on numeric keypads

@@ -224,6 +224,10 @@ bool alpine_player_settings_load(rf::Player* player)
         g_alpine_game_config.always_show_spectators = std::stoi(settings["AlwaysShowSpectators"]);
         processed_keys.insert("AlwaysShowSpectators");
     }
+    if (settings.count("SimpleServerChatMsgs")) {
+        g_alpine_game_config.simple_server_chat_msgs = std::stoi(settings["SimpleServerChatMsgs"]);
+        processed_keys.insert("SimpleServerChatMsgs");
+    }
     if (settings.count("QuickExit")) {
         g_alpine_game_config.quick_exit = std::stoi(settings["QuickExit"]);
         processed_keys.insert("QuickExit");
@@ -463,6 +467,10 @@ bool alpine_player_settings_load(rf::Player* player)
     if (settings.count("WorldHUDTeamLabels")) {
         g_alpine_game_config.world_hud_team_player_labels = std::stoi(settings["WorldHUDTeamLabels"]);
         processed_keys.insert("WorldHUDTeamLabels");
+    }
+    if (settings.count("ShowLocationPings")) {
+        g_alpine_game_config.show_location_pings = std::stoi(settings["ShowLocationPings"]);
+        processed_keys.insert("ShowLocationPings");
     }
     if (settings.count("PlayHitsounds")) {
         g_alpine_game_config.play_hit_sounds = std::stoi(settings["PlayHitsounds"]);
@@ -747,6 +755,7 @@ void alpine_player_settings_save(rf::Player* player)
     file << "RealArmorValues=" << g_alpine_game_config.real_armor_values << "\n";
     file << "AlwaysShowSpectators=" << g_alpine_game_config.always_show_spectators << "\n";
     file << "RemoteServerCfgDisplayMode=" << static_cast<int>(g_alpine_game_config.remote_server_cfg_display_mode) << "\n";
+    file << "SimpleServerChatMsgs=" << g_alpine_game_config.simple_server_chat_msgs << "\n";
     file << "QuickExit=" << g_alpine_game_config.quick_exit << "\n";
     file << "ColorblindMode=" << g_alpine_game_config.colorblind_mode << "\n";
     file << "AutoswitchFireWait=" << g_alpine_game_config.suppress_autoswitch_fire_wait << "\n";
@@ -824,6 +833,7 @@ void alpine_player_settings_save(rf::Player* player)
     file << "WorldHUDDamageNumbers=" << g_alpine_game_config.world_hud_damage_numbers << "\n";
     file << "WorldHUDSpectateLabels=" << g_alpine_game_config.world_hud_spectate_player_labels << "\n";
     file << "WorldHUDTeamLabels=" << g_alpine_game_config.world_hud_team_player_labels << "\n";
+    file << "ShowLocationPings=" << g_alpine_game_config.show_location_pings << "\n";
     file << "PlayHitsounds=" << g_alpine_game_config.play_hit_sounds << "\n";
     file << "PlayTaunts=" << g_alpine_game_config.play_taunt_sounds << "\n";
     file << "VisualRicochet=" << g_alpine_game_config.multi_ricochet << "\n";

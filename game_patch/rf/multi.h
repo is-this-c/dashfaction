@@ -172,6 +172,7 @@ namespace rf
         blue_blue = 3,
         white_white = 4,
         default_ = 5,
+        gold_white = 6,
     };
 
     constexpr size_t max_packet_size = 512;
@@ -236,6 +237,7 @@ namespace rf
     static auto& multi_powerup_remove_all_for_player = addr_as_ref<void(Player* pp)>(0x00480310);
     static auto& send_reload_packet = addr_as_ref<void(Entity* ep, int weapon_type, int clip_ammo, int ammo)>(0x00485B50);
     static auto& send_obj_kill_packet = addr_as_ref<void(Entity* killed_entity, Item* item, int* a3)>(0x0047E8C0);
+    static auto& send_item_create_packet = addr_as_ref<void(Item* item, int16_t* index)>(0x00479A20); // send_item_create_packet3
     static auto& send_respawn_req_packet = addr_as_ref<void(uint32_t multi_character, uint8_t player_id)>(0x004809D0); // client -> server
     static auto& multi_spawn_player_server_side = addr_as_ref<void(Player* pp)>(0x00480820);
     static auto& multi_limbo_timer = addr_as_ref<Timestamp>(0x006D6138);

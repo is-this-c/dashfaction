@@ -514,7 +514,7 @@ FunHook<MultiIoPacketHandler> process_team_change_packet_hook{
                 auto msg = std::format("\xA6 You can't change teams {}", is_player_ready(player)
                     ? "while ready for a match. Use \"/unready\" first."
                     : "during a match.");
-                send_chat_line_packet(msg.c_str(), player);
+                af_send_automated_chat_msg(msg, player);
                 return;
             }
         }        
@@ -1329,84 +1329,14 @@ FunHook<int(rf::NetAddr*, rf::JoinRequest*)> check_access_for_new_player_hook {
     },
 };
 
-static std::pair<AlpineRestrictVerdict, std::string> check_join_request_restrict_status(ClientVersion cv, const AlpineFactionJoinReqPacketExt& info)
+static std::tuple<AlpineRestrictVerdict, std::string, bool> check_join_request_restrict_status(
+    ClientVersion cv, const AlpineFactionJoinReqPacketExt& info)
 {
-    // reject join reqs from clients that are not compatible with the current level
-    if (g_alpine_server_config.alpine_restricted_config.reject_incompatible_clients) {
-        int level_version = get_level_file_version(rf::level.filename.c_str());
+    const ClientVersionInfoProfile version_info{cv, info.version_major, info.version_minor, info.version_patch, info.version_type, info.max_rfl_version};
 
-        if (level_version > info.max_rfl_version && cv != ClientVersion::browser) {
-            std::string client_name = "";
-            switch (cv) {
-                case ClientVersion::alpine_faction:
-                    client_name = std::format("Alpine Faction {}.{}.{}-{}",
-                        info.version_major, info.version_minor, info.version_patch, info.version_type);
-                    break;
-                case ClientVersion::dash_faction:
-                    client_name = std::format("Dash Faction {}.{}{}",
-                        info.version_major, info.version_minor, info.version_type == VERSION_TYPE_BETA ? "-m" : "");
-                    break;
-                case ClientVersion::pure_faction:
-                    client_name = "Pure Faction";
-                    break;
-                default:
-                    client_name = "Legacy Client";
-                    break;
-            }
-            return {AlpineRestrictVerdict::need_update,
-                    std::format("{} max RFL ver {}, {} is {}",
-                        client_name, info.max_rfl_version, rf::level.filename.c_str(), level_version)};
-        }
-    }
+    const auto [verdict, verdict_string, hard_reject] = evaluate_alpine_restrict_status(version_info, true);
 
-    const auto& cfg = g_alpine_server_config.alpine_restricted_config;
-
-    const auto [auto_require_alpine, min_minor_version] = server_features_require_alpine_client();
-    const bool reject_non_alpine = cfg.reject_non_alpine_clients || auto_require_alpine;
-    const bool require_alpine = cfg.clients_require_alpine || reject_non_alpine;
-    const bool enforce_release_build = cfg.alpine_require_release_build;
-    const bool enforce_min_version = cfg.alpine_server_version_enforce_min || auto_require_alpine;
-
-    if (!require_alpine)
-        return {AlpineRestrictVerdict::ok, {}}; // server doesn't require alpine
-
-    // require af client
-    if (reject_non_alpine && cv != ClientVersion::alpine_faction) {
-        switch (cv) {
-            case ClientVersion::dash_faction:
-                return {AlpineRestrictVerdict::need_alpine,
-                        std::format("unsupported client - Dash Faction {}.{}", info.version_major, info.version_minor)};
-            case ClientVersion::browser:
-                return {AlpineRestrictVerdict::ok, {}}; // server browsers are allowed
-            case ClientVersion::pure_faction:
-                return {AlpineRestrictVerdict::need_alpine, "unsupported client - Pure Faction"};
-            default:
-                return {AlpineRestrictVerdict::need_alpine, "unknown client"};
-        }
-    }
-
-    // require af release build
-    if (enforce_release_build && info.version_type != VERSION_TYPE_RELEASE) {
-        return {AlpineRestrictVerdict::need_release,
-                std::format("incompatible AF client {}.{}.{} non-stable",
-                    info.version_major, info.version_minor, info.version_patch)};
-    }
-
-    // require af min version match server
-    if (enforce_min_version) {
-        int required_minor_version = VERSION_MINOR;
-
-        if (auto_require_alpine)
-            required_minor_version = std::max(required_minor_version, min_minor_version);
-
-        if (version_is_older(info.version_major, info.version_minor, VERSION_MAJOR, required_minor_version)) {
-            return {AlpineRestrictVerdict::need_update,
-                    std::format("updated AF client required, current is {}.{}.{}-{}",
-                        info.version_major, info.version_minor, info.version_patch, info.version_type)};
-        }
-    }
-
-    return {AlpineRestrictVerdict::ok, {}};
+    return {verdict, verdict_string, hard_reject};
 }
 
 CodeInjection process_join_req_injection{
@@ -1415,9 +1345,9 @@ CodeInjection process_join_req_injection{
         bool found_tail = parse_af_join_req_any_tail(g_join_request_stashed.pkt, g_join_request_stashed.len, g_join_request_stashed.rx_len);
         g_join_request_stashed = {};
 
-        const auto [verdict, reason] = check_join_request_restrict_status(g_joining_client_version, g_joining_player_info);
+        const auto [verdict, reason, hard_reject] = check_join_request_restrict_status(g_joining_client_version, g_joining_player_info);
 
-        if (verdict != AlpineRestrictVerdict::ok) {
+        if (verdict != AlpineRestrictVerdict::ok && hard_reject) {
             if (auto* addr = static_cast<rf::NetAddr*>(regs.esi)) {
                 in_addr ia;
                 ia.S_un.S_addr = ntohl(addr->ip_addr);
@@ -1707,7 +1637,7 @@ std::optional<AlpineFactionServerInfo>& get_af_server_info_mutable()
     return g_af_server_info;
 }
 
-void send_chat_line_packet(const char* msg, rf::Player* target, rf::Player* sender, bool is_team_msg)
+void send_chat_line_packet(const std::string_view msg, rf::Player* target, rf::Player* sender, bool is_team_msg)
 {
     if (!rf::is_server && sender == nullptr) {
         sender = rf::local_player;
@@ -1715,13 +1645,14 @@ void send_chat_line_packet(const char* msg, rf::Player* target, rf::Player* send
     rf::ubyte buf[512];
     RF_ChatLinePacket packet;
     packet.header.type = RF_GPT_CHAT_LINE;
-    packet.header.size = static_cast<uint16_t>(sizeof(packet) - sizeof(packet.header) + std::strlen(msg) + 1);
+    const size_t len = std::min(msg.size(), 255uz);
+    packet.header.size = static_cast<uint16_t>(sizeof(packet) - sizeof(packet.header) + len + 1);
     packet.player_id = sender ? sender->net_data->player_id : 0xFF;
     packet.is_team_msg = is_team_msg;
     std::memcpy(buf, &packet, sizeof(packet));
     char* packet_msg = reinterpret_cast<char*>(buf + sizeof(packet));
-    std::strncpy(packet_msg, msg, 255);
-    packet_msg[255] = 0;
+    std::strncpy(packet_msg, msg.data(), len);
+    packet_msg[len] = '\0';
     if (target == nullptr && rf::is_server) {
         rf::multi_io_send_reliable_to_all(buf, packet.header.size + sizeof(packet.header), 0);
         rf::console::print("Server: {}", msg);

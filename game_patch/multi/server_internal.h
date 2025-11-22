@@ -373,15 +373,11 @@ struct AlpineRestrictConfig
 {
     bool advertise_alpine = true;
     bool only_welcome_alpine = false;
-    bool reject_incompatible_clients = true;
     bool clients_require_alpine = false;
 
     // below options are only used if clients_require_alpine = true
     bool reject_non_alpine_clients = false;
-    bool alpine_server_version_enforce_min = false;
     bool alpine_require_release_build = false;
-    VoteConfig vote_match;
-    OvertimeConfig overtime;
 };
 
 struct SpawnLifeConfig
@@ -540,7 +536,7 @@ struct AlpineServerConfigRules
     bool flag_captures_while_stolen = false;
     bool drop_amps = false;
     bool no_player_collide = false;
-    bool location_pinging = true;
+    bool location_pinging = false;
     int ctf_flag_return_time_ms = 25000;
     float pvp_damage_modifier = 1.0f;
     DefaultPlayerWeaponConfig default_player_weapon;
@@ -655,6 +651,8 @@ struct AlpineServerConfig
     InactivityConfig inactivity_config;
     DamageNotificationConfig damage_notification_config;
     ClickLimiterConfig click_limiter_config;
+    VoteConfig vote_match;
+    OvertimeConfig overtime;
     VoteConfig vote_kick;
     VoteConfig vote_level;
     VoteConfig vote_gametype;

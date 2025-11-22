@@ -32,21 +32,41 @@ CodeInjection level_read_data_check_restore_status_patch{
 };
 
 CodeInjection level_read_moving_group_travel_time_patch{
-    0x0046396C,
+    0x00463BF3,
+    [](auto& regs) {
+        if (AlpineLevelProperties::instance().legacy_movers) {
+            rf::MoverCreateInfo* mci = regs.edx;
+            // "Force Orient" on translating movers crashes the stock game, so remove it if set just to avoid the crash
+            // In Alpine mode, this is fixed so it works properly so the flag shouldn't be removed
+            if (!mci->rotate_in_place) {
+                mci->force_orient = false;
+            }
+            return; // legacy behaviour
+        }
+        else {
+            rf::MoverCreateInfo* mci = regs.edx;
+            // if "Use Travel Time As Velocity" is used, allow accel/decel values to exceed travel time
+            if (!mci->time_is_velocity) {
+                for (int i = 0; i < mci->keyframes.size(); ++i) {
+                    if (auto kf = mci->keyframes.get(i)) {
+                        const float sum_ramp_times = kf->ramp_up_time_seconds + kf->ramp_down_time_seconds;
+                        kf->forward_time_seconds = std::max(kf->forward_time_seconds, sum_ramp_times);
+                        kf->reverse_time_seconds = std::max(kf->reverse_time_seconds, sum_ramp_times);
+                    }
+                }
+            }
+        }
+    }
+};
+
+CodeInjection level_read_moving_group_lift_patch{
+    0x00463B35,
     [](auto& regs) {
         if (AlpineLevelProperties::instance().legacy_movers) {
             return; // legacy behaviour
         }
         else {
-            rf::MoverKeyframe* kf = regs.edi;
-
-            if (!kf) {
-                return;
-            }
-
-            const float sum_ramp_times = kf->ramp_up_time_seconds + kf->ramp_down_time_seconds;
-            kf->forward_time_seconds = std::max(kf->forward_time_seconds, sum_ramp_times);
-            kf->reverse_time_seconds = std::max(kf->reverse_time_seconds, sum_ramp_times);
+            regs.eip = 0x00463B3D;
         }
     }
 };
@@ -138,8 +158,9 @@ void level_apply_patch()
     // Add checking if restoring game state from save file failed during level loading
     level_read_data_check_restore_status_patch.install();
 
-    // Fix impossible mover timing values
+    // Fix impossible mover timing values and allow lift type movers
     level_read_moving_group_travel_time_patch.install();
+    level_read_moving_group_lift_patch.install();
 
     // Fix item_create null result handling in RFL loading (affects multiplayer only)
     level_load_items_crash_fix.install();

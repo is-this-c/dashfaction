@@ -292,7 +292,7 @@ CodeInjection player_execute_action_patch{
                 rf::is_multi) {
                 rf::player_kill_self(rf::local_player);
                 if (gt_is_run()) {
-                    multi_hud_reset_run_gt_timer();
+                    multi_hud_reset_run_gt_timer(true);
                 }
             }
             else if (action_index == starting_alpine_control_index +

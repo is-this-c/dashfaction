@@ -128,6 +128,8 @@ static rf::ui::Checkbox ao_showfps_cbox;
 static rf::ui::Label ao_showfps_label;
 static rf::ui::Checkbox ao_showping_cbox;
 static rf::ui::Label ao_showping_label;
+static rf::ui::Checkbox ao_locpings_cbox;
+static rf::ui::Label ao_locpings_label;
 static rf::ui::Checkbox ao_redflash_cbox;
 static rf::ui::Label ao_redflash_label;
 static rf::ui::Checkbox ao_deathbars_cbox;
@@ -809,6 +811,12 @@ void ao_showping_cbox_on_click(int x, int y) {
     ao_play_button_snd(g_alpine_game_config.ping_display);
 }
 
+void ao_locpings_cbox_on_click(int x, int y) {
+    g_alpine_game_config.show_location_pings = !g_alpine_game_config.show_location_pings;
+    ao_locpings_cbox.checked = g_alpine_game_config.show_location_pings;
+    ao_play_button_snd(g_alpine_game_config.show_location_pings);
+}
+
 void ao_redflash_cbox_on_click(int x, int y) {
     g_alpine_game_config.damage_screen_flash = !g_alpine_game_config.damage_screen_flash;
     ao_redflash_cbox.checked = g_alpine_game_config.damage_screen_flash;
@@ -1139,8 +1147,10 @@ void alpine_options_panel_init() {
         &ao_redflash_cbox, &ao_redflash_label, &alpine_options_panel1, ao_redflash_cbox_on_click, g_alpine_game_config.damage_screen_flash, 112, 174, "Damage flash");
     alpine_options_panel_checkbox_init(
         &ao_deathbars_cbox, &ao_deathbars_label, &alpine_options_panel1, ao_deathbars_cbox_on_click, g_alpine_game_config.death_bars, 112, 204, "Death bars");
+    alpine_options_panel_checkbox_init(
+        &ao_locpings_cbox, &ao_locpings_label, &alpine_options_panel1, ao_locpings_cbox_on_click, g_alpine_game_config.show_location_pings, 112, 234, "Location pings");
     alpine_options_panel_inputbox_init(
-        &ao_retscale_cbox, &ao_retscale_label, &ao_retscale_butlabel, &alpine_options_panel1, ao_retscale_cbox_on_click, 112, 234, "Reticle scale");
+        &ao_retscale_cbox, &ao_retscale_label, &ao_retscale_butlabel, &alpine_options_panel1, ao_retscale_cbox_on_click, 112, 262, "Reticle scale");
 
     alpine_options_panel_checkbox_init(
         &ao_ctfwh_cbox, &ao_ctfwh_label, &alpine_options_panel1, ao_ctfwh_cbox_on_click, g_alpine_game_config.world_hud_ctf_icons, 280, 54, "CTF icons");
@@ -1155,15 +1165,7 @@ void alpine_options_panel_init() {
     alpine_options_panel_checkbox_init(
         &ao_targetnames_cbox, &ao_targetnames_label, &alpine_options_panel1, ao_targetnames_cbox_on_click, g_alpine_game_config.display_target_player_names, 280, 204, "Target names");
     alpine_options_panel_checkbox_init(
-        &ao_always_show_spectators_cbox,
-        &ao_always_show_spectators_label,
-        &alpine_options_panel1,
-        ao_always_show_spectators_cbox_on_click,
-        g_alpine_game_config.always_show_spectators,
-        280,
-        234,
-        "Show spectators"
-    );
+        &ao_always_show_spectators_cbox, &ao_always_show_spectators_label, &alpine_options_panel1, ao_always_show_spectators_cbox_on_click, g_alpine_game_config.always_show_spectators, 280, 234, "Show spectators");
 
     // panel 2
     alpine_options_panel_checkbox_init(

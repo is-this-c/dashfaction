@@ -89,6 +89,19 @@ CallHook<void(rf::Camera*)> camera_enter_first_person_level_post{
     }
 };
 
+CallHook<rf::CameraMode(rf::Camera*)> camera_get_mode_emit_sound_hook{
+    {
+        0x0048A967, // object_emit_sound
+        0x0048A9DF  // object_emit_sound2
+    },
+    [](rf::Camera* camera) {
+        if (camera)
+            return camera_get_mode_emit_sound_hook.call_target(camera);
+        else // prevent a crash if the camera is momentarily invalid in FP spectate mode
+            return rf::CameraMode::CAMERA_FIRST_PERSON;
+    }
+};
+
 ConsoleCommand2 disable_weaphake_cmd{
     "cl_weapshake",
     []() {
@@ -135,6 +148,9 @@ void camera_do_patch()
 
     // Maintain third person camera mode if set
     camera_enter_first_person_level_post.install();
+
+    // Prevent a rare crash when using FP spectate
+    camera_get_mode_emit_sound_hook.install();
 
     // Fix screen shake caused by some weapons (eg. Assault Rifle)
     write_mem_ptr(0x0040DBCC + 2, &g_camera_shake_factor);

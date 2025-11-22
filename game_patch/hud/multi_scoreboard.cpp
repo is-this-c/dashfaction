@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <format>
 #include <common/utils/list-utils.h>
+#include <optional>
 #include <patch_common/FunHook.h>
 #include "multi_scoreboard.h"
 #include "../input/input.h"
@@ -197,26 +198,37 @@ int draw_scoreboard_players(const std::vector<rf::Player*>& players, int x, int 
 
     int status_w = static_cast<int>(12 * scale);
     int score_w = static_cast<int>(50 * scale);
-    int kd_w = static_cast<int>(70 * scale);
+    bool show_kd = game_type != rf::NG_TYPE_RUN;
+    int kd_w = show_kd ? static_cast<int>(70 * scale) : 0;
     int caps_w = game_type == rf::NG_TYPE_CTF ? static_cast<int>(45 * scale) : 0;
+    const auto& server_info = get_df_server_info();
+    bool saving_enabled = server_info.has_value() && server_info->saving_enabled;
+    bool show_loads = game_type == rf::NG_TYPE_RUN && saving_enabled;
+    int loads_w = show_loads ? static_cast<int>(55 * scale) : 0;
     int ping_w = static_cast<int>(35 * scale);
-    int name_w = w - status_w - score_w - kd_w - caps_w - ping_w;
+    int name_w = w - status_w - score_w - kd_w - caps_w - loads_w - ping_w;
 
     int status_x = x;
     int name_x = status_x + status_w;
     int score_x = name_x + name_w;
     int kd_x = score_x + score_w;
     int caps_x = kd_x + kd_w;
-    int ping_x = caps_x + caps_w;
+    int loads_x = caps_x + caps_w;
+    int ping_x = loads_x + loads_w;
 
     // Draw list header
     if (!dry_run) {
         rf::gr::set_color(0xFF, 0xFF, 0xFF, 0xFF);
         rf::gr::string(name_x, y, rf::strings::player);
         rf::gr::string(score_x, y, rf::strings::score); // Note: RF uses "Frags"
-        rf::gr::string(kd_x, y, "K/D");
+        if (show_kd) {
+            rf::gr::string(kd_x, y, "K/D");
+        }
         if (game_type == rf::NG_TYPE_CTF) {
             rf::gr::string(caps_x, y, rf::strings::caps);
+        }
+        if (show_loads) {
+            rf::gr::string(loads_x, y, "Loads");
         }
         rf::gr::string(ping_x, y, rf::strings::ping, -1);
     }
@@ -263,19 +275,27 @@ int draw_scoreboard_players(const std::vector<rf::Player*>& players, int x, int 
             int score = stats->score;
             int num_kills = stats->num_kills;
             int num_deaths = stats->num_deaths;
-            int caps = stats->caps;
+            int caps_or_loads = stats->caps;
             int ping = player->net_data ? player->net_data->ping : 0;
 #endif
 
-            auto score_str = std::to_string(score);
+            int displayed_score = game_type == rf::NG_TYPE_RUN ? num_deaths : score;
+            auto score_str = std::to_string(displayed_score);
             rf::gr::string(score_x, y, score_str.c_str());
 
-            auto kills_deaths_str = std::format("{}/{}", num_kills, num_deaths);
-            rf::gr::string(kd_x, y, kills_deaths_str.c_str());
+            if (show_kd) {
+                auto kills_deaths_str = std::format("{}/{}", num_kills, num_deaths);
+                rf::gr::string(kd_x, y, kills_deaths_str.c_str());
+            }
 
             if (game_type == rf::NG_TYPE_CTF) {
-                auto caps_str = std::to_string(caps);
+                auto caps_str = std::to_string(caps_or_loads);
                 rf::gr::string(caps_x, y, caps_str.c_str());
+            }
+
+            if (show_loads) {
+                auto loads_str = std::to_string(caps_or_loads);
+                rf::gr::string(loads_x, y, loads_str.c_str());
             }
 
             auto ping_str = std::to_string(ping);
@@ -319,15 +339,23 @@ void draw_scoreboard_internal_new(bool draw)
     }
     game_type = rf::NG_TYPE_CTF;
     bool group_by_team = multi_game_type_is_team_type(game_type);
+    //bool split_columns = true;
 #else
     // Sort players by score
     bool group_by_team = multi_game_type_is_team_type(game_type);
+    bool split_columns = group_by_team;
     if (group_by_team) {
         filter_and_sort_players(left_players, {rf::TEAM_RED});
         filter_and_sort_players(right_players, {rf::TEAM_BLUE});
     }
     else {
         filter_and_sort_players(left_players, {});
+        if (left_players.size() > 16) {
+            auto overflow_start = left_players.begin() + 16;
+            right_players.assign(overflow_start, left_players.end());
+            left_players.erase(overflow_start, left_players.end());
+            split_columns = true;
+        }
     }
 #endif
 
@@ -359,11 +387,11 @@ void draw_scoreboard_internal_new(bool draw)
     // Note: fit_scoreboard_string does not support providing font by argument so default font must be changed
     if (g_big_scoreboard) {
         rf::gr::set_default_font(hud_get_default_font_name(true));
-        w = std::min(!group_by_team ? 900 : 1400, rf::gr::clip_width());
+        w = std::min(!split_columns ? 900 : 1400, rf::gr::clip_width());
         scale = 2.0f;
     }
     else {
-        w = std::min(!group_by_team ? 450 : 700, rf::gr::clip_width());
+        w = std::min(!split_columns ? 450 : 700, rf::gr::clip_width());
         scale = 1.0f;
     }
 
@@ -395,7 +423,7 @@ void draw_scoreboard_internal_new(bool draw)
     }
 
     y += draw_scoreboard_header(x, y, w, game_type);
-    if (group_by_team) {
+    if (split_columns) {
         int table_w = (w - left_padding - middle_padding - right_padding) / 2;
         draw_scoreboard_players(left_players, x + left_padding, y, table_w, scale, game_type);
         draw_scoreboard_players(right_players, x + left_padding + table_w + middle_padding, y, table_w, scale, game_type);

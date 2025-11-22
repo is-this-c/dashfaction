@@ -1,4 +1,6 @@
 #include <ranges>
+#include <algorithm>
+#include <tuple>
 #include <cstdint>
 #include <patch_common/CodeInjection.h>
 #include <patch_common/AsmWriter.h>
@@ -49,6 +51,8 @@ static int time_left_string_x_pos_offset = 135;
 static int time_left_string_y_pos_offset = 21;
 static std::tuple time_left_string_color = {0, 255, 0, 255};
 static rf::TimestampRealtime g_run_life_start_timestamp;
+static bool g_run_timer_reset_by_respawn_key = false;
+static bool g_run_timer_fade_active = false;
 
 // Radio messages
 static const ChatMenuList radio_messages_menu{
@@ -621,10 +625,7 @@ static uint32_t run_timer_elapsed_milliseconds()
         return 0;
     }
 
-    const uint32_t now_ms = static_cast<uint32_t>(rf::timer_get_milliseconds());
-    const uint32_t start_ms = static_cast<uint32_t>(g_run_life_start_timestamp.value);
-
-    return now_ms - start_ms;
+    return static_cast<uint32_t>(g_run_life_start_timestamp.time_since());
 }
 
 static std::string build_run_timer_string()
@@ -644,6 +645,30 @@ static std::string build_run_timer_string()
     return std::format("{:02}:{:02}:{:02}.{:03}", hours, minutes, seconds, milliseconds);
 }
 
+static std::tuple<int, int, int, int> get_run_timer_color()
+{
+    if (g_run_timer_reset_by_respawn_key && !g_run_life_start_timestamp.valid()) {
+        return {255, 0, 0, 255};
+    }
+
+    if (g_run_timer_fade_active && g_run_life_start_timestamp.valid()) {
+        const float elapsed_seconds = static_cast<float>(run_timer_elapsed_milliseconds()) / 1000.0f;
+        const float t = std::clamp(elapsed_seconds / 10.0f, 0.0f, 1.0f);
+
+        const int r = 255;
+        const int g = static_cast<int>(255.0f * t);
+        const int b = g;
+
+        if (t >= 1.0f) {
+            g_run_timer_fade_active = false;
+        }
+
+        return {r, g, b, 255};
+    }
+
+    return {255, 255, 255, 255};
+}
+
 static void hud_render_run_timer_widget(int x, int y, int w, int h, int font_id)
 {
     rf::gr::set_color(0, 0, 0, 150);
@@ -660,7 +685,8 @@ static void hud_render_run_timer_widget(int x, int y, int w, int h, int font_id)
     auto draw_shadow_text = [&](int tx, int ty, const std::string& text) {
         rf::gr::set_color(0, 0, 0, 230);
         rf::gr::string(tx + 1, ty + 1, text.c_str(), font_id);
-        rf::gr::set_color(255, 255, 255, 255);
+        const auto [r, g, b, a] = get_run_timer_color();
+        rf::gr::set_color(r, g, b, a);
         rf::gr::string(tx, ty, text.c_str(), font_id);
     };
 
@@ -1597,6 +1623,8 @@ void multi_hud_level_init() {
     g_draw_respawn_timer_notification = false;
     g_draw_respawn_timer_can_respawn = false;
     g_run_life_start_timestamp.invalidate();
+    g_run_timer_reset_by_respawn_key = false;
+    g_run_timer_fade_active = false;
 
     level_menu = ChatMenuList{
         .display_string = "MAP MESSAGES",
@@ -1826,7 +1854,7 @@ void chat_menu_action_handler(rf::Key key) {
             // Commands do not play a chat sound or display for user
             const std::string msg = selected_element.long_string;
             if (!msg.empty()) {
-                send_chat_line_packet(msg.c_str(), nullptr);
+                send_chat_line_packet(msg, nullptr);
             }
         }
         else if (g_chat_menu_active == ChatMenuType::Spectate) {
@@ -1999,6 +2027,20 @@ ConsoleCommand2 ui_always_show_specators_cmd{
     "ui_always_show_specators",
 };
 
+ConsoleCommand2 ui_simple_server_chat_messages_cmd{
+    "ui_simple_server_chat_messages",
+    [] {
+        g_alpine_game_config.simple_server_chat_msgs =
+            !g_alpine_game_config.simple_server_chat_msgs;
+        rf::console::print(
+            "Simple server chat messages is {}",
+            g_alpine_game_config.simple_server_chat_msgs ? "enabled" : "disabled"
+        );
+    },
+    "Toggle simple server chat messages",
+    "ui_simple_server_chat_messages",
+};
+
 void multi_hud_apply_patches()
 {
     multi_hud_render_patch.install();
@@ -2024,6 +2066,7 @@ void multi_hud_apply_patches()
     ui_playernames_cmd.register_cmd();
     ui_verbosetimer_cmd.register_cmd();
     ui_always_show_specators_cmd.register_cmd();
+    ui_simple_server_chat_messages_cmd.register_cmd();
 
     control_config_get_mouse_delta_hook.install();
 }
@@ -2032,12 +2075,18 @@ void multi_hud_on_local_spawn()
 {
     if (gt_is_run() && !g_run_life_start_timestamp.valid()) {
         g_run_life_start_timestamp.set(0);
+        if (g_run_timer_reset_by_respawn_key) {
+            g_run_timer_fade_active = true;
+        }
+        g_run_timer_reset_by_respawn_key = false;
     }
 }
 
-void multi_hud_reset_run_gt_timer()
+void multi_hud_reset_run_gt_timer(bool triggered_by_respawn_key)
 {
     g_run_life_start_timestamp.invalidate();
+    g_run_timer_reset_by_respawn_key = triggered_by_respawn_key;
+    g_run_timer_fade_active = false;
 }
 
 void multi_hud_set_big(bool is_big)

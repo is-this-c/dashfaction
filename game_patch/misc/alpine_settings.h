@@ -95,6 +95,7 @@ struct AlpineGameSettings
     bool world_hud_damage_numbers = true;
     bool world_hud_spectate_player_labels = false;
     bool world_hud_team_player_labels = false;
+    bool show_location_pings = true;
     bool play_hit_sounds = true;
     bool play_taunt_sounds = true;
     bool play_global_rad_msg_sounds = true;
@@ -128,6 +129,7 @@ struct AlpineGameSettings
     bool always_show_spectators = false;
     RemoteServerCfgPopup::DisplayMode remote_server_cfg_display_mode =
         RemoteServerCfgPopup::DISPLAY_MODE_ALIGN_RIGHT_HIGHLIGHT_BOX;
+    bool simple_server_chat_msgs = true;
     bool quick_exit = false;
     int colorblind_mode = 0; // 0=off,1=protanopia,2=deuteranopia,3=tritanopia
     int suppress_autoswitch_alias = -1;

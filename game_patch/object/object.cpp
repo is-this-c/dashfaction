@@ -471,6 +471,7 @@ void object_do_patch()
     apply_weapon_patches();
     trigger_apply_patches();
     monitor_do_patch();
+    mover_do_patch();
     particle_do_patch();
     obj_light_apply_patch();
 }

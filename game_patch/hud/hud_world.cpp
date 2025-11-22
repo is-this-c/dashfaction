@@ -1015,6 +1015,10 @@ void populate_world_hud_sprite_events()
 
 void add_location_ping_world_hud_sprite(rf::Vector3 pos, std::string player_name, int player_id)
 {
+    if (!g_alpine_game_config.show_location_pings) {
+        return;
+    }
+
     // Remove any existing entry from the same player name
     std::erase_if(ephemeral_world_hud_sprites,
         [&](const EphemeralWorldHUDSprite& es) { return es.player_id == player_id; });

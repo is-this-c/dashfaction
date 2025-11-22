@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <string>
+#include <utility>
 #include <xlog/xlog.h>
 #include "server_internal.h"
 #include "../rf/player/player.h"
@@ -116,16 +118,28 @@ enum class AlpineRestrictVerdict : uint8_t
     need_update = 3
 };
 
+struct ClientVersionInfoProfile
+{
+    ClientVersion client_version = ClientVersion::unknown;
+    uint8_t version_major = 0u;
+    uint8_t version_minor = 0u;
+    uint8_t version_patch = 0u;
+    uint8_t version_type = 0u;
+    uint32_t max_rfl_version = 0u;
+};
+
 void set_local_pending_game_type(rf::NetGameType game_type, int win_condition);
 void reset_local_pending_game_type();
 const bool was_level_loaded_manually();
 void set_manually_loaded_level(bool is_true);
 bool version_is_older(int aMaj, int aMin, int bMaj, int bMin);
+void enforce_alpine_hard_reject_for_all_players_on_current_level();
+std::tuple<AlpineRestrictVerdict, std::string, bool> evaluate_alpine_restrict_status(const ClientVersionInfoProfile& info, bool check_level_version);
 void multi_level_download_update();
 void multi_do_patch();
 void multi_after_full_game_init();
 void multi_init_player(rf::Player* player);
-void send_chat_line_packet(const char* msg, rf::Player* target, rf::Player* sender = nullptr, bool is_team_msg = false);
+void send_chat_line_packet(std::string_view msg, rf::Player* target, rf::Player* sender = nullptr, bool is_team_msg = false);
 const std::optional<AlpineFactionServerInfo>& get_df_server_info();
 std::optional<AlpineFactionServerInfo>& get_af_server_info_mutable();
 void multi_level_download_do_frame();

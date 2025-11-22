@@ -153,6 +153,7 @@ set(SRCS
     os/os.cpp
     os/os.h
     object/object.h
+    object/mover.h
     object/object_private.h
     object/event_alpine.h
     object/entity.cpp
@@ -164,6 +165,7 @@ set(SRCS
     object/cutscene.cpp
     object/glare.cpp
     object/object.cpp
+    object/mover.cpp
     object/monitor.cpp
     object/particle.cpp
     object/obj_light.cpp

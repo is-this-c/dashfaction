@@ -299,12 +299,14 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
     rules.spawn_loadout.add("Riot Stick", baton_ammo, false, true);
     rules.set_pvp_damage_modifier(1.0f);
     rules.no_player_collide = false;
+    rules.location_pinging = false;
     rules.saving_enabled = false;
 
     switch (game_type) {
         case rf::NetGameType::NG_TYPE_KOTH: {
             rules.spawn_delay.enabled = true;
             rules.spawn_delay.set_base_value(5.0f);
+            rules.location_pinging = true;
 
             // secondary weapon
             rules.spawn_loadout.add("Remote Charge", 3, false, true);
@@ -320,6 +322,7 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
         case rf::NetGameType::NG_TYPE_DC: {
             rules.spawn_delay.enabled = true;
             rules.spawn_delay.set_base_value(2.5f);
+            rules.location_pinging = true;
 
             // primary weapon
             rules.default_player_weapon.set_weapon("12mm handgun");
@@ -331,6 +334,7 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
         case rf::NetGameType::NG_TYPE_REV: {
             rules.spawn_delay.enabled = true;
             rules.spawn_delay.set_base_value(2.0f);
+            rules.location_pinging = true;
 
             // secondary weapon
             rules.spawn_loadout.add("Remote Charge", 3, false, true);
@@ -346,6 +350,7 @@ void apply_defaults_for_game_type(rf::NetGameType game_type, AlpineServerConfigR
         case rf::NetGameType::NG_TYPE_RUN: {
             rules.set_pvp_damage_modifier(0.0f);
             rules.no_player_collide = true;
+            rules.location_pinging = true;
             rules.saving_enabled = true;
 
             rules.spawn_delay.enabled = false;
@@ -607,24 +612,14 @@ static AlpineRestrictConfig parse_alpine_restrict_config(const toml::table &t)
         o.advertise_alpine = *v;
     if (auto v = t["only_welcome_alpine"].value<bool>())
         o.only_welcome_alpine = *v;
-    if (auto v = t["reject_incompatible"].value<bool>())
-        o.reject_incompatible_clients = *v;
     if (auto v = t["clients_require_alpine"].value<bool>())
         o.clients_require_alpine = *v;
 
     if (o.clients_require_alpine) {
         if (auto v = t["reject_non_alpine_clients"].value<bool>())
             o.reject_non_alpine_clients = *v;
-        if (auto v = t["alpine_server_version_enforce_min"].value<bool>())
-            o.alpine_server_version_enforce_min = *v;
         if (auto v = t["alpine_require_release_build"].value<bool>())
             o.alpine_require_release_build = *v;
-        if (auto sub = t["vote_match"].as_table())
-            o.vote_match = parse_vote_config(*sub);
-        if (o.vote_match.enabled) {
-            if (auto sub = t["overtime"].as_table())
-                o.overtime = parse_overtime_config(*sub);
-        }
     }
     return o;
 }
@@ -919,6 +914,13 @@ static void apply_known_table_in_order(AlpineServerConfig& cfg, const std::strin
         cfg.alpine_restricted_config = parse_alpine_restrict_config(tbl);
     else if (key == "click_limiter")
         cfg.click_limiter_config = parse_click_limiter_config(tbl);
+    else if (key == "vote_match") {
+        cfg.vote_match = parse_vote_config(tbl);
+        if (cfg.vote_match.enabled) {
+            if (auto sub = tbl["overtime"].as_table())
+                cfg.overtime = parse_overtime_config(*sub);
+        }
+    }
     else if (key == "vote_kick")
         cfg.vote_kick = parse_vote_config(tbl);
     else if (key == "vote_level")
@@ -1643,31 +1645,28 @@ void print_alpine_dedicated_server_config_info(std::string& output, bool verbose
     // alpine restrict
     std::format_to(iter, "  Advertise Alpine:                      {}\n", cfg.alpine_restricted_config.advertise_alpine);
     std::format_to(iter, "  Only welcome Alpine players:           {}\n", cfg.alpine_restricted_config.only_welcome_alpine);
-    std::format_to(iter, "  Reject incompatible clients:           {}\n", cfg.alpine_restricted_config.reject_incompatible_clients);
     std::format_to(iter, "  Clients require Alpine:                {}\n", cfg.alpine_restricted_config.clients_require_alpine);
     if (cfg.alpine_restricted_config.clients_require_alpine) {
         std::format_to(iter, "    Reject non-Alpine clients:           {}\n", cfg.alpine_restricted_config.reject_non_alpine_clients);
-        std::format_to(iter, "    Enforce min server version:          {}\n", cfg.alpine_restricted_config.alpine_server_version_enforce_min);
         std::format_to(iter, "    Require release build:               {}\n", cfg.alpine_restricted_config.alpine_require_release_build);
-
-        // match mode
-        auto& vm = cfg.alpine_restricted_config.vote_match;
-        std::format_to(iter, "    Match mode:                          {}\n", vm.enabled);
-        if (vm.enabled) {
-            std::format_to(iter, "      Vote ignores nonvoters:            {}\n", vm.ignore_nonvoters);
-            std::format_to(iter, "      Vote time limit:                   {} sec\n", vm.time_limit_seconds);
-            auto& ot = cfg.alpine_restricted_config.overtime;
-            std::format_to(iter, "      Overtime:                          {}\n", ot.enabled);
-            if (ot.enabled) {
-                std::format_to(iter, "        Additional time:                 {}\n", ot.additional_time);
-                std::format_to(iter, "        Tie when flag stolen:            {}\n", ot.consider_tie_if_flag_stolen);
-            }
-        }
     }
 
     // votes
+    auto& vm = cfg.vote_match;
+    std::format_to(iter, "  Vote match:                            {}\n", vm.enabled);
+    if (vm.enabled) {
+        std::format_to(iter, "    Ignore nonvoters:                    {}\n", vm.ignore_nonvoters);
+        std::format_to(iter, "    Time limit:                          {} sec\n", vm.time_limit_seconds);
+        auto& ot = cfg.overtime;
+        std::format_to(iter, "    Overtime:                            {}\n", ot.enabled);
+        if (ot.enabled) {
+            std::format_to(iter, "      Additional time:                   {}\n", ot.additional_time);
+            std::format_to(iter, "      Tie when flag stolen:              {}\n", ot.consider_tie_if_flag_stolen);
+        }
+    }
+
     auto print_vote = [&](std::string name, const VoteConfig& v) {
-        std::format_to(iter, "  {}                 {}\n", name, v.enabled);
+        std::format_to(iter, "  {}                         {}\n", name, v.enabled);
         if (v.enabled) {
             std::format_to(iter, "    Ignore nonvoters:                    {}\n", v.ignore_nonvoters);
             std::format_to(iter, "    Time limit:                          {} sec\n", v.time_limit_seconds);
@@ -2047,7 +2046,9 @@ ConsoleCommand2 load_server_config_cmd{
             load_and_print_alpine_dedicated_server_config(new_config.value_or(g_ads_config_name), false);
             bool changed_game_type = apply_game_type_for_current_level();
             apply_rules_for_current_level();
+            initialize_game_info_server_flags();
             af_send_server_info_packet_to_all();
+            enforce_alpine_hard_reject_for_all_players_on_current_level();
             if (changed_game_type)
                 restart_current_level();
         }
