@@ -1573,6 +1573,8 @@ void af_process_server_msg_packet(
         g_remote_server_cfg_popup.add_content(
             std::string_view{ptr, len - sizeof(msg_packet)}
         );
+    } else if (msg_packet.type == static_cast<uint8_t>(AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG_EOF)) {
+        g_remote_server_cfg_popup.finalize();
     } else if (msg_packet.type == static_cast<uint8_t>(AF_SERVER_MSG_TYPE_AUTOMATED_CHAT)) {
         const char* ptr = static_cast<const char*>(data) + sizeof(msg_packet);
         const rf::String msg{std::string_view{ptr, len - sizeof(msg_packet)}};
