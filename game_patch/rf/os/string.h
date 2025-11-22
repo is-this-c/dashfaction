@@ -70,7 +70,7 @@ namespace rf
 
         operator std::string_view() const
         {
-            return {m_pod.buf};
+            return {c_str()};
         }
 
         String& operator=(const String& other)

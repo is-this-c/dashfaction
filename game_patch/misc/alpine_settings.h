@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include "../hud/hud.h"
 
 extern bool g_loaded_alpine_settings_file;
 
@@ -125,6 +126,8 @@ struct AlpineGameSettings
     bool entity_pain_sounds = true;
     bool real_armor_values = false;
     bool always_show_spectators = false;
+    RemoteServerCfgPopup::DisplayMode remote_server_cfg_display_mode =
+        RemoteServerCfgPopup::DISPLAY_MODE_ALIGN_RIGHT_HIGHLIGHT_BOX;
     bool quick_exit = false;
     int colorblind_mode = 0; // 0=off,1=protanopia,2=deuteranopia,3=tritanopia
     int suppress_autoswitch_alias = -1;

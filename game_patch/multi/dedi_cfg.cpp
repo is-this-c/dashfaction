@@ -633,8 +633,8 @@ namespace fs = std::filesystem;
 
 static AlpineServerConfigRules apply_rules_presets_and_overrides(
     const toml::table& scope_tbl, const fs::path& base_dir, const AlpineServerConfigRules& starting_rules,
-    std::string_view context, const std::map<std::string, std::string>* preset_aliases = nullptr,
-    std::vector<fs::path>* preset_stack = nullptr, std::vector<std::string>* applied_presets = nullptr)
+    std::string_view context, const std::map<std::string, std::filesystem::path>* preset_aliases = nullptr,
+    std::vector<fs::path>* preset_stack = nullptr, std::vector<std::pair<std::filesystem::path, std::optional<std::string>>>* applied_presets = nullptr)
 {
     std::vector<fs::path> local_stack;
     const bool is_root_call = !preset_stack;
@@ -687,9 +687,9 @@ static AlpineServerConfigRules apply_rules_presets_and_overrides(
             rules = apply_rules_presets_and_overrides(*preset_rules, resolved_path.parent_path(), rules, next_context, preset_aliases, preset_stack, applied_presets);
             if (applied_presets) {
                 if (used_alias)
-                    applied_presets->push_back(std::format("{} (alias '{}')", resolved_path.generic_string(), preset_path));
+                    applied_presets->emplace_back(resolved_path, preset_path);
                 else
-                    applied_presets->push_back(resolved_path.generic_string());
+                    applied_presets->emplace_back(resolved_path, std::nullopt);
             }
         }
         catch (const toml::parse_error& err) {
@@ -739,7 +739,7 @@ std::optional<ManualRulesOverride> load_rules_preset_alias(std::string_view pres
         resolved_path = fs::absolute(resolved_path);
     }
 
-    std::vector<std::string> applied_presets;
+    std::vector<std::pair<std::filesystem::path, std::optional<std::string>>> applied_presets;
 
     try {
         toml::table preset_root = toml::parse_file(resolved_path.string());
@@ -756,7 +756,7 @@ std::optional<ManualRulesOverride> load_rules_preset_alias(std::string_view pres
             std::format("rules preset alias '{}'", preset_name), &g_alpine_server_config.rules_preset_aliases,
             nullptr, &applied_presets);
 
-        applied_presets.push_back(std::format("{} (alias '{}')", resolved_path.generic_string(), preset_name));
+        applied_presets.emplace_back(resolved_path, preset_name);
         result.applied_preset_paths = std::move(applied_presets);
         result.preset_alias = std::string(preset_name);
         return result;
@@ -823,19 +823,18 @@ static void apply_rules_preset_aliases(AlpineServerConfig& cfg, const toml::tabl
         }
 
         const std::string alias_name = static_cast<std::string>(alias_key.str());
-        const std::string resolved = resolved_path.generic_string();
 
         auto it = cfg.rules_preset_aliases.find(alias_name);
         if (it != cfg.rules_preset_aliases.end()) {
-            if (it->second == resolved)
+            if (it->second == resolved_path)
                 continue;
 
-            it->second = resolved;
-            rf::console::print("  Updated rules preset alias '{}' -> {}\n", alias_name, resolved);
+            it->second = resolved_path;
+            rf::console::print("  Updated rules preset alias '{}' -> {}\n", alias_name, resolved_path.generic_string());
         }
         else {
-            cfg.rules_preset_aliases.emplace(alias_name, resolved);
-            rf::console::print("  Registered rules preset alias '{}' -> {}\n", alias_name, resolved);
+            cfg.rules_preset_aliases.emplace(alias_name, resolved_path);
+            rf::console::print("  Registered rules preset alias '{}' -> {}\n", alias_name, resolved_path.generic_string());
         }
     }
 }
@@ -1506,7 +1505,7 @@ void print_rules(std::string& output, const AlpineServerConfigRules& rules, bool
             auto it = b.item_replacements.find(orig);
             bool unchanged = (it != b.item_replacements.end() && it->second == repl);
             if (base || !unchanged) {
-                std::format_to(iter, "    {:<20}     ->          {}\n", orig, repl);
+                std::format_to(iter, "    {:<20}     ->          {}\n", orig, repl.empty() ? "<none>" : repl);
             }
         }
     }
@@ -1565,18 +1564,26 @@ void print_rules(std::string& output, const AlpineServerConfigRules& rules, bool
     print_gungame(output, rules.gungame, b.gungame, base);
 }
 
-void print_rules_with_presets(std::string& output, const AlpineServerConfigRules& rules, const std::vector<std::string>& preset_paths, bool base)
+void print_rules_with_presets(std::string& output, const AlpineServerConfigRules& rules, const std::vector<std::pair<std::filesystem::path, std::optional<std::string>>>& preset_paths, bool base, const bool sanitize = false)
 {
     const auto iter = std::back_inserter(output);
     if (!preset_paths.empty()) {
         std::format_to(iter, "  Rules presets applied:\n");
-        for (const auto& preset : preset_paths)
-            std::format_to(iter, "    {}\n", preset);
+        for (const auto& [preset_path, preset_alias] : preset_paths) {
+            const std::string path = sanitize
+                ? preset_path.filename().string()
+                : preset_path.string();
+            if (preset_alias) {
+                std::format_to(iter, "    {} (alias '{}')\n", path, preset_alias.value());
+            } else {
+                std::format_to(iter, "    {}\n", path);
+            }
+        }
     }
     print_rules(output, rules, base);
 }
 
-void print_alpine_dedicated_server_config_info(std::string& output, bool verbose, const bool password) {
+void print_alpine_dedicated_server_config_info(std::string& output, bool verbose, const bool sanitize) {
     auto& netgame = rf::netgame;
     const auto& cfg = g_alpine_server_config;
 
@@ -1584,7 +1591,7 @@ void print_alpine_dedicated_server_config_info(std::string& output, bool verbose
     std::format_to(iter, "\n---- Core configuration ----\n");
     std::format_to(iter, "  Server port:                           {} (UDP)\n", netgame.server_addr.port);
     std::format_to(iter, "  Server name:                           {}\n", netgame.name);
-    if (password) {
+    if (!sanitize) {
         std::format_to(iter, "  Password:                              {}\n", netgame.password);
         std::format_to(iter, "  Rcon password:                         {}\n", rf::rcon_password);
     }
@@ -1679,18 +1686,23 @@ void print_alpine_dedicated_server_config_info(std::string& output, bool verbose
     
     if (!cfg.rules_preset_aliases.empty()) {
         std::format_to(iter, "\n---- Rules preset alias mappings ----\n");
-        for (const auto& [alias, path] : cfg.rules_preset_aliases)
-            std::format_to(iter, "  {} -> {}\n", alias, path);
+        for (const auto& [alias, path] : cfg.rules_preset_aliases) {
+            if (sanitize) {
+                std::format_to(iter, "  {} -> {}\n", alias, path.filename().string());
+            } else {
+                std::format_to(iter, "  {} -> {}\n", alias, path.string());
+            }
+        }
     }
 
     std::format_to(iter, "\n---- Base rules ----\n");
-    print_rules_with_presets(output, cfg.base_rules, cfg.base_rules_preset_paths, true);
+    print_rules_with_presets(output, cfg.base_rules, cfg.base_rules_preset_paths, true, sanitize);
 
     std::format_to(iter, "\n---- Level rotation ----\n");
     for (size_t i = 0; i < cfg.levels.size(); ++i) {
         const auto& lvl = cfg.levels[i];
         std::format_to(iter, "{} ({})\n", lvl.level_filename, i);
-        print_rules_with_presets(output, lvl.rule_overrides, lvl.applied_rules_preset_paths, false);
+        print_rules_with_presets(output, lvl.rule_overrides, lvl.applied_rules_preset_paths, false, sanitize);
     }
     std::format_to(iter, "\n");
 }
@@ -1945,7 +1957,7 @@ ConsoleCommand2 print_server_config_cmd{
     []() {
         if (g_dedicated_launched_from_ads) {
             std::string output{};
-            print_alpine_dedicated_server_config_info(output, true, true);
+            print_alpine_dedicated_server_config_info(output, true);
             rf::console::print("{}", output.c_str());
         }
         else {

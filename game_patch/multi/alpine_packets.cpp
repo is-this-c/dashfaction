@@ -113,7 +113,7 @@ bool af_process_packet(const void* data, int len, const rf::NetAddr& addr, rf::P
 void af_send_ping_location_req_packet(rf::Vector3* pos)
 {
     // Send: client -> server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -194,7 +194,9 @@ static void af_process_ping_location_req_packet(const void* data, size_t len, co
 void af_send_ping_location_packet(rf::Vector3* pos, uint8_t player_id, rf::Player* player)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     std::byte packet_buf[rf::max_packet_size];
     af_ping_location_packet ping_location_packet{};
@@ -244,7 +246,7 @@ void af_send_ping_location_packet_to_all(rf::Vector3* pos, uint8_t player_id)
 static void af_process_ping_location_packet(const void* data, size_t len, const rf::NetAddr& addr)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -272,7 +274,9 @@ static void af_process_ping_location_packet(const void* data, size_t len, const 
 void af_send_damage_notify_packet(uint8_t player_id, float damage, bool died, rf::Player* player)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     std::byte packet_buf[rf::max_packet_size];
     af_damage_notify_packet damage_notify_packet{};
@@ -297,7 +301,7 @@ void af_send_damage_notify_packet(uint8_t player_id, float damage, bool died, rf
 static void af_process_damage_notify_packet(const void* data, size_t len, const rf::NetAddr& addr)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -326,7 +330,9 @@ static void af_process_damage_notify_packet(const void* data, size_t len, const 
 void af_send_obj_update_packet(rf::Player* player)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     std::vector<af_obj_update> obj_updates;
     auto player_list = SinglyLinkedList{rf::player_list};
@@ -421,7 +427,7 @@ void af_send_obj_update_packet(rf::Player* player)
 static void af_process_obj_update_packet(const void* data, size_t len, const rf::NetAddr& addr)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -493,7 +499,7 @@ static void af_process_obj_update_packet(const void* data, size_t len, const rf:
 // send handicap request
 void af_send_handicap_request(uint8_t amount)
 {
-    if (rf::is_server || rf::is_dedicated_server || !rf::local_player) {
+    if (!rf::is_multi || rf::is_server) {
         return; // Only clients should send this
     }
 
@@ -512,7 +518,7 @@ void serialize_payload(const HandicapPayload& payload, std::byte* buf, size_t& o
 }
 
 void af_send_server_cfg_request() {
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -536,7 +542,7 @@ void serialize_payload(
 void af_send_client_req_packet(const af_client_req_packet& packet)
 {
     // Send: client -> server
-    if (rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -561,7 +567,7 @@ void af_send_client_req_packet(const af_client_req_packet& packet)
 static void af_process_client_req_packet(const void* data, size_t len, const rf::NetAddr& addr)
 {
     // Receive: server <- client
-    if (!rf::is_dedicated_server) {
+    if (!rf::is_server) {
         return;
     }
 
@@ -705,7 +711,7 @@ void af_send_just_spawned_loadout(rf::Player* to_player, std::vector<WeaponLoado
 static void af_process_just_spawned_info_packet(const void* data, size_t len, const rf::NetAddr&)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server)
+    if (!rf::is_multi || rf::is_server)
         return;
     if (len < sizeof(RF_GamePacketHeader) + 1)
         return;
@@ -771,7 +777,9 @@ static void af_process_just_spawned_info_packet(const void* data, size_t len, co
 void af_send_koth_hill_state_packet(rf::Player* player, const HillInfo& h, const Presence& pres)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     if (!player) {
         xlog::error("af_koth_state_packet: Attempted to send to an invalid player");
@@ -817,7 +825,7 @@ void af_send_koth_hill_state_packet_to_all(const HillInfo& h, const Presence& pr
 static void af_process_koth_hill_state_packet(const void* data, size_t len, const rf::NetAddr&)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server)
+    if (!rf::is_multi || rf::is_server)
         return;
     if (len < sizeof(RF_GamePacketHeader))
         return;
@@ -873,7 +881,9 @@ static void af_process_koth_hill_state_packet(const void* data, size_t len, cons
 void af_send_koth_hill_captured_packet(rf::Player* player, uint8_t hill_uid, HillOwner owner, const std::vector<uint8_t>& new_owner_player_ids)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     if (!player) {
         //xlog::error("af_koth_hill_captured_packet: Attempted to send to an invalid player");
@@ -931,7 +941,7 @@ void af_send_koth_hill_captured_packet_to_all(uint8_t hill_uid, HillOwner owner,
 static void af_process_koth_hill_captured_packet(const void* data, size_t len, const rf::NetAddr&)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server)
+    if (!rf::is_multi || rf::is_server)
         return;
     if (len < sizeof(RF_GamePacketHeader))
         return;
@@ -994,7 +1004,9 @@ static void af_process_koth_hill_captured_packet(const void* data, size_t len, c
 void af_send_just_died_info_packet(rf::Player* to_player, bool respawn_allowed, bool force_respawn, uint16_t spawn_delay_ms)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     if (!to_player || !to_player->net_data) {
         xlog::error("af_just_died_info: Attempted to send to an invalid player");
@@ -1021,7 +1033,7 @@ void af_send_just_died_info_packet(rf::Player* to_player, bool respawn_allowed, 
 static void af_process_just_died_info_packet(const void* data, size_t len, const rf::NetAddr&)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server)
+    if (!rf::is_multi || rf::is_server)
         return;
 
     if (len < sizeof(af_just_died_info_packet)) {
@@ -1137,7 +1149,9 @@ static void build_af_server_info_packet(af_server_info_packet& pkt)
 void af_send_server_info_packet(rf::Player* player)
 {
     // Send: server -> client
-    assert(rf::is_server);
+    if (!rf::is_server) {
+        return;
+    }
 
     if (!player || !player->net_data) {
         xlog::error("af_server_info: Attempted to send to an invalid player");
@@ -1176,7 +1190,7 @@ void af_send_server_info_packet_to_all()
 static void af_process_server_info_packet(const void* data, size_t len, const rf::NetAddr&)
 {
     // Receive: client <- server
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server)
+    if (!rf::is_multi || rf::is_server)
         return;
 
     if (len < sizeof(af_server_info_packet)) {
@@ -1275,7 +1289,7 @@ static void af_process_server_info_packet(const void* data, size_t len, const rf
 
 void af_send_spectate_start_packet(const rf::Player* const spectatee) {
     // Are we a client?
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -1303,7 +1317,7 @@ void af_process_spectate_start_packet(
     const size_t len,
     const rf::NetAddr& addr) {
     // Are we a server?
-    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+    if (!rf::is_server) {
         return;
     }
 
@@ -1351,7 +1365,7 @@ void af_send_spectate_notify_packet(
     const bool does_spectate
 ) {
     // Are we a server?
-    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+    if (!rf::is_server) {
         return;
     }
 
@@ -1381,7 +1395,7 @@ void af_process_spectate_notify_packet(
     const rf::NetAddr&
 ) {
     // Are we a client?
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 
@@ -1410,12 +1424,12 @@ void af_process_spectate_notify_packet(
 
 void af_send_server_cfg(rf::Player* player) {
     // Are we a server?
-    if (!rf::is_multi || !rf::is_server || !rf::is_dedicated_server) {
+    if (!rf::is_server) {
         return;
     }
 
     std::string output{};
-    print_alpine_dedicated_server_config_info(output, true);
+    print_alpine_dedicated_server_config_info(output, true, true);
 
     const auto send_msg = [player] (const std::string_view data) {
         constexpr size_t max_chunk_len = rf::max_packet_size - sizeof(af_server_msg_packet);
@@ -1449,6 +1463,20 @@ void af_send_server_cfg(rf::Player* player) {
     for (const auto chunk : output | std::views::chunk(chunk_size)) {
         send_msg(std::string_view{chunk.begin(), chunk.end()});
     }
+
+    af_server_msg_packet server_msg_packet;
+    server_msg_packet.header.type = static_cast<uint8_t>(af_packet_type::af_server_msg);
+    server_msg_packet.header.size = static_cast<uint16_t>(
+        sizeof(server_msg_packet) - sizeof(server_msg_packet.header)
+    );
+    server_msg_packet.type = static_cast<uint8_t>(AF_SERVER_MSG_TYPE_REMOTE_SERVER_CFG_EOF);
+
+    rf::multi_io_send_reliable(
+        player,
+        &server_msg_packet,
+        server_msg_packet.header.size + sizeof(server_msg_packet.header),
+        0
+    );
 }
 
 void af_process_server_msg_packet(
@@ -1457,7 +1485,7 @@ void af_process_server_msg_packet(
     const rf::NetAddr&
 ) {
     // Are we a client?
-    if (!rf::is_multi || rf::is_server || rf::is_dedicated_server) {
+    if (!rf::is_multi || rf::is_server) {
         return;
     }
 

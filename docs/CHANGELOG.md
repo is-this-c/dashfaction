@@ -98,8 +98,8 @@ Version 1.2.0 (Willow): Not yet released
 
 [@is-this-c](https://github.com/is-this-c)
 - Add `key_quick_exit` command to restore keyboard shortcut `Shift+Esc` to quit out of Red Faction
-- Support `Alt+F4` or pressing X on window to quit out of Red Faction
-- Add `ui_remote_server_cfg` command and a configurable control to display a remote server's config
+- Support `Alt+F4` or pressing X on a window to quit out of Red Faction
+- Add a configurable control to display a remote server's config
 - Add `ui_always_show_spectators` command to display spectators in multiplayer
 - Simplify code that fixed broken events if their delay parameter was set
 
