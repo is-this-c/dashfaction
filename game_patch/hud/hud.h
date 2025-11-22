@@ -71,6 +71,7 @@ private:
 
     std::vector<Line> m_lines{};
     std::string m_partial_line{};
+    int m_last_key_down = 0;
     bool m_cfg_changed = false;
     bool m_need_restore_scroll = false;
     std::optional<float> m_saved_scroll{};

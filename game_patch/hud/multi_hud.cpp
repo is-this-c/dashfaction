@@ -1289,28 +1289,26 @@ void RemoteServerCfgPopup::render() {
     int clip_x = 0, clip_y = 0, clip_w = 0, clip_h = 0;
     rf::gr::get_clip(&clip_x, &clip_y, &clip_w, &clip_h);
 
-    static int last_key_down = 0;
-
     int mouse_dx = 0, mouse_dy = 0, mouse_dz = 0;
     rf::mouse_get_delta(mouse_dx, mouse_dy, mouse_dz);
     if (mouse_dz != 0) {
         m_scroll.target += (mouse_dz > 0 ? -2 : 2) * (line_height + sep_thickness);
-        last_key_down = 0;
+        m_last_key_down = 0;
     }
 
     const float key_scroll_speed = 600.f;
     if (rf::key_is_down(rf::KEY_UP)) {
         m_scroll.target -= key_scroll_speed * rf::frametime;
-        last_key_down = 1;
+        m_last_key_down = 1;
     }
     if (rf::key_is_down(rf::KEY_DOWN)) {
         m_scroll.target += key_scroll_speed * rf::frametime;
-        last_key_down = -1;
+        m_last_key_down = -1;
     }
 
     if (!rf::key_is_down(rf::KEY_UP)
         && !rf::key_is_down(rf::KEY_DOWN)
-        && last_key_down) {
+        && m_last_key_down) {
         const float line_h = static_cast<float>(line_height + sep_thickness);
 
         float rem = std::fmod(m_scroll.target, line_h);
@@ -1319,14 +1317,14 @@ void RemoteServerCfgPopup::render() {
                 rem += line_h;
             }
 
-            if (last_key_down < 0) {
+            if (m_last_key_down < 0) {
                 m_scroll.target += line_h - rem;
             } else {
                 m_scroll.target -= rem;
             }
         }
 
-        last_key_down = 0;
+        m_last_key_down = 0;
     }
 
     if (m_need_restore_scroll
